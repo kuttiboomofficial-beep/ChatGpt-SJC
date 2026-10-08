@@ -1,127 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#111">
-<meta name="description" content="SHREE JI CONNECT - Business CRM, Orders, Production, WhatsApp, Reports and Exhibition Management">
-<title>SHREE JI CONNECT</title>
-<link rel="manifest" href="manifest.json">
-<style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f4f5f7;color:#171717}
-button,input,select,textarea{font:inherit}
-button{border:0;border-radius:10px;padding:11px 16px;background:#111;color:#fff;cursor:pointer;font-weight:700}
-button.orange{background:#f47b00}button.green{background:#198c43}button.red{background:#c62828}button.light{background:#eee;color:#222}
-header{background:#111;color:#fff;padding:18px 26px;border-bottom:5px solid #f47b00;position:sticky;top:0;z-index:20}
-#printPageBtn{float:right;margin-top:-42px;background:#fff;color:#222;border:0;padding:10px 14px;border-radius:10px}#printPageBtn:hover{background:#eee}
-#brand{font-size:24px;font-weight:800}#subtitle{color:#bbb;margin-top:5px}
-nav{display:flex;gap:10px;overflow-x:auto;white-space:nowrap;background:#fff;padding:10px;border-bottom:1px solid #ddd;position:sticky;top:91px;z-index:19}
-nav button{background:#eee;color:#333;padding:12px 18px;border-radius:13px}
-nav button.active{background:#f47b00;color:#fff}
-main{max-width:1450px;margin:auto;padding:18px}
-section{display:none}section.active{display:block}
-h2{font-size:30px;margin:8px 0 20px}h3{margin-top:4px}
-.card{background:#fff;border:1px solid #ddd;border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 2px 8px #0000000c}
-.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.tile{background:#fff;border:1px solid #ddd;border-radius:16px;padding:16px}
-.kpi{font-size:30px;font-weight:800;margin-top:8px}.muted{color:#777;font-size:14px}
-.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.full{grid-column:1/-1}
-label{display:block;font-size:14px;font-weight:700;margin:6px 0}
-input,select,textarea{width:100%;padding:12px;border:1px solid #d2d2d2;border-radius:10px;background:#fff}
-textarea{resize:vertical}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
-.actions input,.actions select{width:auto;min-width:180px}
-.tablewrap{overflow:auto}
-table{width:100%;border-collapse:collapse;min-width:900px}
-th,td{padding:11px;border-bottom:1px solid #e8e8e8;text-align:left;vertical-align:middle}th{background:#f6f6f6}
-td button{margin:2px;padding:8px 10px;font-size:13px}
-.status{display:inline-block;padding:6px 10px;border-radius:18px;font-size:12px;font-weight:700}
-.s-Pending{background:#fff3cd;color:#856404}.s-Started{background:#cfe2ff;color:#084298}
-.s-Finished{background:#d1e7dd;color:#0f5132}.s-Delivered{background:#d1e7dd;color:#146c43}.s-Cancelled{background:#f8d7da;color:#842029}
-.hero{background:#111;color:#fff;border-radius:22px;padding:26px;margin-bottom:18px}
-.hero .big{font-size:22px;font-weight:800}.hero p{color:#ccc;font-size:17px}
-.quick{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-.empty{padding:25px;text-align:center;color:#777}
-.modalbg{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:12px;z-index:50}
-.modalbg.show{display:flex}.modal{width:min(950px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;padding:20px}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:12px 18px;border-radius:24px;display:none;z-index:100}
-.preview{max-width:100%;max-height:220px;border-radius:12px;border:1px solid #ddd}
-.small{font-size:12px}.danger-note{background:#fff3cd;border-radius:10px;padding:10px;color:#856404}
 
-.bulk-toolbar{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;align-items:end}
-.bulk-list{border:1px solid #ddd;border-radius:14px;overflow:hidden;margin-top:14px}
-.bulk-head,.bulk-row{display:grid;grid-template-columns:48px minmax(180px,1.2fr) minmax(160px,1fr) minmax(120px,.8fr) minmax(110px,.7fr);gap:10px;align-items:center;padding:12px 14px}
-.bulk-head{background:#f6f6f6;font-size:13px;font-weight:800}
-.bulk-row{border-top:1px solid #eee;background:#fff}
-.bulk-row:hover{background:#fafafa}
-.bulk-row input[type=checkbox]{width:18px;height:18px}
-.bulk-name{font-weight:800}.bulk-contact{font-weight:700}.bulk-mobile{font-size:14px}.bulk-city{color:#555;font-size:14px}
-.bulk-count{font-size:15px;font-weight:800}.bulk-limit{font-size:13px;color:#777}
-.bulk-selected{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.bulk-chip{background:#f1f1f1;border-radius:18px;padding:7px 10px;font-size:12px;font-weight:700}
-@media(max-width:700px){.bulk-toolbar{grid-template-columns:1fr}.bulk-head{display:none}.bulk-row{grid-template-columns:36px 1fr 1fr;gap:7px}.bulk-row>div:nth-child(4),.bulk-row>div:nth-child(5){display:none}}
-@media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.quick{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:650px){
- header{padding:15px 18px}#brand{font-size:21px}
- nav{top:83px;padding:8px}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}
- .grid,.tiles{grid-template-columns:1fr 1fr}main{padding:12px}h2{font-size:26px}.card{padding:14px}
- .quick{grid-template-columns:1fr 1fr}.actions input,.actions select{min-width:145px;flex:1}
-}
-
-@media print{
- @page{size:A4 portrait;margin:12mm}
- body{background:#fff!important;color:#111!important}
- header,nav,#toast,.modalbg,#printPageBtn,.no-print{display:none!important}
- main{max-width:none!important;margin:0!important;padding:0!important}
- section{display:none!important}
- section.active{display:block!important}
- .card,.tile,.hero{box-shadow:none!important;border:1px solid #bbb!important;break-inside:avoid}
- h2{font-size:22px!important;margin:0 0 12px!important}
- .grid{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
- .kpi{font-size:20px!important}
- .hero{background:#111!important;color:#fff!important}
- .tablewrap{break-inside:auto!important}
- tr{break-inside:avoid;page-break-inside:avoid}
- .actions{display:none!important}
- button{display:none!important}
- .tablewrap{overflow:visible!important}
- table{min-width:0!important;width:100%!important;font-size:11px}
- th,td{padding:6px!important;border:1px solid #ccc!important}
- input,select,textarea{border:0!important;background:#fff!important;padding:4px!important}
- .city-suggestions{display:none!important}
-}
-@media(max-width:650px){#printPageBtn{float:none;position:absolute;right:14px;top:14px;margin:0;padding:9px 11px;font-size:13px}}
-
-.city-field{position:relative}.city-suggestions{display:none;position:absolute;left:0;right:0;top:100%;z-index:100;background:#fff;border:1px solid #d5d5d5;border-radius:10px;box-shadow:0 8px 22px #0002;overflow:hidden;margin-top:4px}.city-option{width:100%;border:0;border-radius:0;background:#fff;color:#222;text-align:left;padding:11px 13px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}.city-option:hover,.city-option:focus{background:#f6f6f6}.city-option span{color:#777;font-size:13px;margin-left:12px}
-.security-overlay{position:fixed;inset:0;background:#111;display:none;align-items:center;justify-content:center;padding:18px;z-index:10000}.security-overlay.show{display:flex}.security-box{width:min(420px,100%);background:#fff;border-radius:20px;padding:26px;box-shadow:0 20px 70px #0008}.security-box h2{margin:0 0 8px;font-size:26px}.security-box p{color:#666;line-height:1.45}.security-box input{font-size:22px;text-align:center;letter-spacing:7px}.security-error{min-height:20px;color:#c62828;font-size:13px;font-weight:700;margin-top:8px}.security-hint{font-size:12px;color:#888;margin-top:10px}.print-only{display:none}.customer-type-select{min-width:170px;padding:7px 9px;border:1px solid #ddd;border-radius:8px;background:#fff;font-weight:700}
-@media print{.no-print{display:none!important}.print-only{display:inline!important}.security-overlay{display:none!important}}
-
-.compact-expo-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.expo-kpi{border:1px solid #ddd;text-align:left;cursor:pointer;min-height:108px;padding:14px}.expo-kpi:hover{transform:translateY(-1px)}.expo-kpi .kpi{font-size:26px;margin:5px 0}.report-head{margin-bottom:10px}.report-head h3{margin:0 0 4px}@media(max-width:800px){.compact-expo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.customer-type-badge{display:inline-block;padding:7px 10px;border-radius:999px;font-weight:800;font-size:13px;white-space:nowrap}.customer-type-badge.new{background:#fff0df;color:#b65b00}.customer-type-badge.existing{background:#e7f7ee;color:#168b58}
-</style>
-</head>
-<body>
-<header><div id="brand">SHREE JI GOLD CREATOR LLP</div><div id="subtitle">Customer CRM • Orders • Production • WhatsApp • Reports</div><button id="lockBtn" class="light no-print" onclick="lockApp()">🔒 Lock</button><button id="printPageBtn" class="light no-print" onclick="printCurrentPage()">🖨️ Print Page</button></header>
-<nav id="nav"></nav>
-<main>
-<section id="dashboard"></section>
-<section id="customers"></section>
-<section id="orders"></section>
-<section id="production"></section>
-<section id="reports"></section>
-<section id="whatsapp"></section>
-<section id="templates"></section>
-<section id="exhibitions"></section>
-<section id="print"></section>
-<section id="scanner"></section>
-<section id="backup"></section>
-<section id="settings"></section>
-<section id="menu"></section>
-</main>
-<div id="modalbg" class="modalbg"><div id="modal" class="modal"></div></div>
-<div id="toast" class="toast"></div><div id="securityOverlay" class="security-overlay" aria-modal="true" role="dialog"></div>
-
-<script>
 const KEY='sjc_business_v7';
 const OLD_KEYS=['sjc_business_v6','sjc_business_v5','sjc_business_v3'];
 const STATUS=['Pending','Started','Finished','Delivered','Cancelled'];
@@ -410,7 +287,7 @@ function openOrder(id){
  let today=new Date().toISOString().slice(0,10);
  let o=id?ord(id):{orderNo:'SJ-'+new Date().getFullYear()+'-'+String(db.orders.length+1).padStart(4,'0'),orderDate:today,customerId:'',type:db.settings.defaultType,status:db.settings.defaultStatus,weight:'',touch:'',screw:'',ladyRing:'',gentRing:'',huid:'Yes',advanceMode:'Cash',advanceAmount:'',startDate:'',delivered:'',exhibitionId:'',notes:'',orderTakenBy:'',confirmationDate:'',confirmedBy:''};
  let takenBy=o.orderTakenBy||'',confirmedBy=o.confirmedBy||'',confirmationDate=o.confirmationDate||'';
- modal(id?'Edit Order':'New Order','<div class="formgrid"><div><label>Order Number *</label><input id="ono" value="'+esc(o.orderNo)+'"></div><div><label>Order Date *</label><input id="od" type="date" value="'+esc(o.orderDate)+'"></div><div><label>Jewellery Name *</label><select id="oc" onchange="updateOrderCustomerInfo()"><option value="">-- Select Jewellery Name --</option>'+db.customers.map(c=>'<option value="'+c.id+'" '+(c.id==o.customerId?'selected':'')+'>'+esc(c.shop||'-')+'</option>').join('')+'</select><div id="orderCustomerInfo" class="muted" style="margin-top:7px;font-size:14px;font-weight:700"></div></div><div><label>Exhibition</label><select id="oex"><option value="">-- None --</option>'+db.exhibitions.map(e=>'<option value="'+e.id+'" '+(e.id==o.exhibitionId?'selected':'')+'>'+esc(e.name)+'</option>').join('')+'</select></div><div><label>Order Type *</label><select id="ot"><option '+(o.type==='Direct'?'selected':'')+'>Direct</option><option '+(o.type==='SM'?'selected':'')+'>SM</option></select></div><div><label>Weight (g) *</label><input id="ow" type="number" step=".001" value="'+esc(o.weight)+'"></div><div><label>Touch *</label><input id="touch" value="'+esc(o.touch)+'"></div><div><label>Screw Type</label><select id="screw">'+screwOptions(o.screw)+'</select></div><div><label>Lady\'s Ring Size (From - To)</label>'+ringOptions(7,17,o.ladyRing,'lrFrom','lrTo')+'</div><div><label>Gent\'s Ring Size (From - To)</label>'+ringOptions(15,29,o.gentRing,'grFrom','grTo')+'</div><div><label>HUID</label><select id="huid"><option '+(o.huid!=='No'?'selected':'')+'>Yes</option><option '+(o.huid==='No'?'selected':'')+'>No</option></select></div><div><label>Advance Mode</label><select id="am"><option '+(o.advanceMode==='Cash'?'selected':'')+'>Cash</option><option '+(o.advanceMode==='Gpay'?'selected':'')+'>Gpay</option><option '+(o.advanceMode==='Bank'?'selected':'')+'>Bank</option></select></div><div><label>Advance Amount (₹)</label><input id="adv" type="number" step=".01" value="'+esc(o.advanceAmount)+'"></div><div><label>Start Date</label><input id="sd" type="date" value="'+esc(o.startDate)+'"></div><div><label>Status</label><select id="orderStatus">'+STATUS.map(s=>'<option value="'+s+'" '+((o.status||'Pending')===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div><div><label>Delivered Date</label><input id="dd" type="date" value="'+esc(o.delivered)+'"></div><div><label>Order Taken By *</label><select id="orderTakenBy" data-order-id="'+(id||0)+'">'+staffOptions(takenBy)+'</select></div><div><label>Order Confirmation Date</label><input id="confirmationDate" type="date" value="'+esc(confirmationDate)+'"></div><div><label>Confirmed By</label><select id="confirmedBy">'+confirmationOptions(confirmedBy)+'</select></div><div class="full"><div class="danger-note">💡 Staff names can be added in <b>Settings → Staff Names</b>. These details are saved with the order and shown in Order Management, Reports, CSV and print slips.</div></div><div class="full"><label>Notes</label><textarea id="onotes" rows="3">'+esc(o.notes)+'</textarea></div></div><div class="actions"><button class="orange" onclick="saveOrder('+(id||0)+')">Save Order</button></div>');
+ modal(id?'Edit Order':'New Order','<div class="formgrid"><div><label>Order Number *</label><input id="ono" value="'+esc(o.orderNo)+'"></div><div><label>Order Date *</label><input id="od" type="date" value="'+esc(o.orderDate)+'"></div><div><label>Jewellery Name *</label><select id="oc" onchange="updateOrderCustomerInfo()"><option value="">-- Select Jewellery Name --</option>'+db.customers.map(c=>'<option value="'+c.id+'" '+(c.id==o.customerId?'selected':'')+'>'+esc(c.shop||'-')+'</option>').join('')+'</select><div id="orderCustomerInfo" class="muted" style="margin-top:7px;font-size:14px;font-weight:700"></div></div><div><label>Exhibition</label><select id="oex"><option value="">-- None --</option>'+db.exhibitions.map(e=>'<option value="'+e.id+'" '+(e.id==o.exhibitionId?'selected':'')+'>'+esc(e.name)+'</option>').join('')+'</select></div><div><label>Order Type *</label><select id="ot"><option '+(o.type==='Direct'?'selected':'')+'>Direct</option><option '+(o.type==='SM'?'selected':'')+'>SM</option></select></div><div><label>Weight (g) *</label><input id="ow" type="number" step=".001" value="'+esc(o.weight)+'"></div><div><label>Touch *</label><input id="touch" value="'+esc(o.touch)+'"></div><div><label>Screw Type</label><select id="screw">'+screwOptions(o.screw)+'</select></div><div><label>Lady\'s Ring Size (From - To)</label>'+ringOptions(7,17,o.ladyRing,'lrFrom','lrTo')+'</div><div><label>Gent\'s Ring Size (From - To)</label>'+ringOptions(15,29,o.gentRing,'grFrom','grTo')+'</div><div><label>HUID</label><select id="huid"><option '+(o.huid!=='No'?'selected':'')+'>Yes</option><option '+(o.huid==='No'?'selected':'')+'>No</option></select></div><div><label>Advance Mode</label><select id="am"><option '+(o.advanceMode==='Cash'?'selected':'')+'>Cash</option><option '+(o.advanceMode==='Gpay'?'selected':'')+'>Gpay</option><option '+(o.advanceMode==='Bank'?'selected':'')+'>Bank</option></select></div><div><label>Advance Amount (₹)</label><input id="adv" type="number" step=".01" value="'+esc(o.advanceAmount)+'"></div><div><label>Start Date</label><input id="sd" type="date" value="'+esc(o.startDate)+'"></div><div><label>Status</label><select id="orderStatus">'+STATUS.map(s=>'<option value="'+s+'" '+((o.status||'Pending')===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div><div><label>Delivered Date</label><input id="dd" type="date" value="'+esc(o.delivered)+'"></div><div><label>Order Taken By *</label><select id="orderTakenBy">'+staffOptions(takenBy)+'</select></div><div><label>Order Confirmation Date</label><input id="confirmationDate" type="date" value="'+esc(confirmationDate)+'"></div><div><label>Confirmed By</label><select id="confirmedBy">'+confirmationOptions(confirmedBy)+'</select></div><div class="full"><div class="danger-note">💡 Staff names can be added in <b>Settings → Staff Names</b>. These details are saved with the order and shown in Order Management, Reports, CSV and print slips.</div></div><div class="full"><label>Notes</label><textarea id="onotes" rows="3">'+esc(o.notes)+'</textarea></div></div><div class="actions"><button class="orange" onclick="saveOrder('+(id||0)+')">Save Order</button></div>');
  updateOrderCustomerInfo();
 }
 function updateOrderCustomerInfo(){
@@ -418,18 +295,8 @@ function updateOrderCustomerInfo(){
  if(!$('orderCustomerInfo'))return;
  if(!id){$('orderCustomerInfo').textContent='';return;}
  const c=cust(id);
- const editingId=Number(document.querySelector('#orderTakenBy')?.dataset?.orderId||0);
- const selectedDate=$('od')?.value||'';
- // Customer is Existing only when there is an earlier order for the same customer.
- // The current order itself is never counted, so a first order remains New.
- const hasEarlierOrder=db.orders.some(o=>{
-   if(String(o.customerId)!==String(id)) return false;
-   if(editingId && Number(o.id)===editingId) return false;
-   const od=String(o.orderDate||'');
-   if(!selectedDate || !od) return true;
-   return od<selectedDate || (od===selectedDate && Number(o.id)<editingId);
- });
- const label=hasEarlierOrder?'🔁 Existing Customer':'🆕 New Customer';
+ const orderCount=db.orders.filter(o=>String(o.customerId)===String(id)).length;
+ const label=orderCount>0?'🔁 Existing Customer':'🆕 New Customer';
  $('orderCustomerInfo').innerHTML=esc(c.name||'-')+' - 📱 '+esc(c.mobile||'-')+' &nbsp; <b>'+label+'</b>';
 }
 function saveOrder(id){
@@ -879,6 +746,3 @@ function renderAll(){syncCustomerTypes();
 go('dashboard');
 if(securityEnabled()){securityUnlocked=false;showSecurityScreen('unlock')}else{securityUnlocked=false;showSecurityScreen('setup')}
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});}
-</script>
-</body>
-</html>
