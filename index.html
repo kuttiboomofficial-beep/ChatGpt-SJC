@@ -348,15 +348,29 @@ async function confirmCityField(){
   return st||'';
 }
 
+
+function formatPersonName(value){
+  return String(value||'').trim().replace(/\s+/g,' ').split(' ').filter(Boolean).map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ');
+}
+function formatJewelleryName(value){
+  return String(value||'').trim().replace(/\s+/g,' ').toUpperCase();
+}
+function applyCustomerNameFormats(){
+  const n=$('cn'),shop=$('cs');
+  if(n)n.value=formatPersonName(n.value);
+  if(shop)shop.value=formatJewelleryName(shop.value);
+}
+
 function openCustomer(id){
  let c=id?cust(id):{name:'',shop:'',mobile:'',alt:'',city:'',state:'',address:'',notes:''};
- modal(id?'Edit Customer':'New Customer','<div class="formgrid"><div><label>Contact Person *</label><input id="cn" value="'+esc(c.name)+'"></div><div><label>Mobile *</label><input id="cm" value="'+esc(c.mobile)+'"></div><div><label>Jewellery Name</label><input id="cs" value="'+esc(c.shop)+'"></div><div><label>Alternate Mobile</label><input id="ca" value="'+esc(c.alt)+'"></div><div class="city-field"><label>City</label><input id="cc" autocomplete="off" list="cityList" placeholder="Type city e.g. C" oninput="autoCityState()" onblur="confirmCityField()" onfocus="renderCitySuggestions()" value="'+esc(c.city)+'"><datalist id="cityList">'+CITY_NAMES.map(n=>'<option value="'+esc(n)+'">'+esc(CITY_STATE[n])+'</option>').join('')+'</datalist><div id="citySuggestions" class="city-suggestions"></div></div><div><label>State</label><input id="cstate" readonly placeholder="Auto-filled from city" value="'+esc(c.state)+'"></div><div class="full"><label>Full Address</label><textarea id="caddr" rows="3">'+esc(c.address)+'</textarea></div><div class="full"><label>Notes</label><textarea id="cnotes">'+esc(c.notes)+'</textarea></div></div><div class="actions"><button class="orange" onclick="saveCustomer('+(id||0)+')">Save Customer</button></div>');
+ modal(id?'Edit Customer':'New Customer','<div class="formgrid"><div><label>Contact Person *</label><input id="cn" value="'+esc(c.name)+'" onblur="this.value=formatPersonName(this.value)"></div><div><label>Mobile *</label><input id="cm" value="'+esc(c.mobile)+'"></div><div><label>Jewellery Name</label><input id="cs" value="'+esc(c.shop)+'" onblur="this.value=formatJewelleryName(this.value)"></div><div><label>Alternate Mobile</label><input id="ca" value="'+esc(c.alt)+'"></div><div class="city-field"><label>City</label><input id="cc" autocomplete="off" list="cityList" placeholder="Type city e.g. C" oninput="autoCityState()" onblur="confirmCityField()" onfocus="renderCitySuggestions()" value="'+esc(c.city)+'"><datalist id="cityList">'+CITY_NAMES.map(n=>'<option value="'+esc(n)+'">'+esc(CITY_STATE[n])+'</option>').join('')+'</datalist><div id="citySuggestions" class="city-suggestions"></div></div><div><label>State</label><input id="cstate" readonly placeholder="Auto-filled from city" value="'+esc(c.state)+'"></div><div class="full"><label>Full Address</label><textarea id="caddr" rows="3">'+esc(c.address)+'</textarea></div><div class="full"><label>Notes</label><textarea id="cnotes">'+esc(c.notes)+'</textarea></div></div><div class="actions"><button class="orange" onclick="saveCustomer('+(id||0)+')">Save Customer</button></div>');
  autoCityState();
 }
 
 async function saveCustomer(id){
   await confirmCityField();
-  let x={name:$('cn').value.trim(),mobile:$('cm').value.trim(),shop:$('cs').value.trim(),alt:$('ca').value.trim(),city:$('cc').value.trim(),state:$('cstate').value.trim(),address:$('caddr').value.trim(),notes:$('cnotes').value.trim()};
+  applyCustomerNameFormats();
+  let x={name:formatPersonName($('cn').value),mobile:$('cm').value.trim(),shop:formatJewelleryName($('cs').value),alt:$('ca').value.trim(),city:$('cc').value.trim(),state:$('cstate').value.trim(),address:$('caddr').value.trim(),notes:$('cnotes').value.trim()};
   if(!x.name||!x.mobile)return toast('Name and mobile required');
   if(id)Object.assign(cust(id),x);else db.customers.push({id:Date.now(),...x,customerType:'New',dateAdded:new Date().toISOString().slice(0,10)});
   save();closeModal();renderAll();toast('Customer saved');
@@ -728,7 +742,7 @@ async function scanCard(){
  }catch(e){console.error(e);$('ocrStatus').textContent='OCR failed. Try a clearer, well-lit photo with the whole card visible.'}finally{$('scanBtn').disabled=false;}
 }
 function clearScan(){scanFile=null;if($('cardFile'))$('cardFile').value='';['snshop','sn','sm','sa','sc','ssc','saddr','ocrText'].forEach(id=>{if($(id))$(id).value=''});if($('cardImg')){$('cardImg').style.display='none';$('cardImg').removeAttribute('src')}if($('scanBtn'))$('scanBtn').disabled=true;if($('ocrStatus'))$('ocrStatus').textContent='Choose a card photo to begin.';const b=$('scannerCitySuggestions');if(b){b.innerHTML='';b.style.display='none';}}
-function saveScan(){const name=$('sn').value.trim(),mobile=$('sm').value.replace(/\D/g,'').slice(-10),city=$('sc').value.trim();if(!name||mobile.length!==10)return toast('Review Customer Name and 10-digit Mobile');db.customers.push({id:Date.now(),name,shop:$('snshop').value.trim(),contactPerson:'',mobile,alt:$('sa').value.replace(/\D/g,'').slice(-10),city,address:$('saddr').value.trim(),state:cityState(city)||$('ssc').value.trim(),exhibition:'',notes:'From visiting card scanner',dateAdded:new Date().toISOString().slice(0,10)});save();toast('Customer saved');clearScan();go('customers');}
+function saveScan(){const name=formatPersonName($('sn').value),mobile:$('sm').value.replace(/\D/g,'').slice(-10),city:$('sc').value.trim();if(!name||mobile.length!==10)return toast('Review Customer Name and 10-digit Mobile');db.customers.push({id:Date.now(),name,shop:formatJewelleryName($('snshop').value),contactPerson:'',mobile,alt:$('sa').value.replace(/\D/g,'').slice(-10),city,address:$('saddr').value.trim(),state:cityState(city)||$('ssc').value.trim(),exhibition:'',notes:'From visiting card scanner',dateAdded:new Date().toISOString().slice(0,10)});save();toast('Customer saved');clearScan();go('customers');}
 function bytesToB64(bytes){let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));return btoa(bin)}
 function b64ToBytes(s){let bin=atob(s),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return a}
 async function deriveBackupKey(pin,salt){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:120000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
