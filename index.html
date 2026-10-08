@@ -402,10 +402,18 @@ async function saveCustomer(id){
   if(id)Object.assign(cust(id),x);else db.customers.push({id:Date.now(),...x,customerType:'New',dateAdded:new Date().toISOString().slice(0,10)});
   save();closeModal();renderAll();toast('Customer saved');
 }
-function syncCustomerTypes(){db.customers.forEach(c=>{c.customerType=db.orders.some(o=>String(o.customerId)===String(c.id))?'Existing':'New'});save();}
+function customerOrders(customerId,excludeOrderId=0){
+ return db.orders.filter(o=>String(o.customerId)===String(customerId) && Number(o.id)!==Number(excludeOrderId||0));
+}
+function customerOrderCount(customerId,excludeOrderId=0){return customerOrders(customerId,excludeOrderId).length;}
+function syncCustomerTypes(){
+ let changed=false;
+ db.customers.forEach(c=>{const next=customerOrderCount(c.id)>=2?'Existing':'New';if(c.customerType!==next){c.customerType=next;changed=true;}});
+ if(changed)save();
+}
 function renderCustomers(){
  let q=($('cq')?.value||'').toLowerCase(),a=db.customers.filter(c=>(c.name+' '+c.shop+' '+c.mobile+' '+c.city+' '+c.state).toLowerCase().includes(q));
- $('customers').innerHTML=`<h2>Customer CRM</h2><div class="actions"><button class="orange" onclick="openCustomer()">+ New Customer</button><button class="no-print" onclick="printCustomers()">🖨️ Print Customers</button><input id="cq" placeholder="Search customer / shop / mobile / city" value="${esc(q)}" oninput="renderCustomers()"></div><div class="card tablewrap">${a.length?`<table><tr><th>Jewellery Name</th><th>Contact Person</th><th>Mobile</th><th>City</th><th>State</th><th>Customer Type</th><th class="no-print">Actions</th></tr>${a.map(c=>{let current=db.orders.some(o=>String(o.customerId)===String(c.id))?'Existing':'New';return `<tr><td><b>${esc(c.shop||'-')}</b></td><td>${esc(c.name||'-')}</td><td>${esc(c.mobile||'-')}</td><td>${esc(c.city||'-')}</td><td>${esc(c.state||'-')}</td><td>${current==='Existing'?'<span class="customer-type-badge existing">🔁 Existing Customer</span>':'<span class="customer-type-badge new">🆕 New Customer</span>'}</td><td class="no-print"><button class="light" onclick="openCustomer(${c.id})">Edit</button><button class="green" onclick="openWA(${c.id})">WA</button><button class="red" onclick="deleteCustomer(${c.id})">Delete</button></td></tr>`}).join('')}</table>`:'<div class="empty">No customers found</div>'}</div>`;
+ $('customers').innerHTML=`<h2>Customer CRM</h2><div class="actions"><button class="orange" onclick="openCustomer()">+ New Customer</button><button class="no-print" onclick="printCustomers()">🖨️ Print Customers</button><input id="cq" placeholder="Search customer / shop / mobile / city" value="${esc(q)}" oninput="renderCustomers()"></div><div class="card tablewrap">${a.length?`<table><tr><th>Jewellery Name</th><th>Contact Person</th><th>Mobile</th><th>City</th><th>State</th><th>Customer Type</th><th class="no-print">Actions</th></tr>${a.map(c=>{let current=customerOrderCount(c.id)>=2?'Existing':'New';return `<tr><td><b>${esc(c.shop||'-')}</b></td><td>${esc(c.name||'-')}</td><td>${esc(c.mobile||'-')}</td><td>${esc(c.city||'-')}</td><td>${esc(c.state||'-')}</td><td>${current==='Existing'?'<span class="customer-type-badge existing">🔁 Existing Customer</span>':'<span class="customer-type-badge new">🆕 New Customer</span>'}</td><td class="no-print"><button class="light" onclick="openCustomer(${c.id})">Edit</button><button class="green" onclick="openWA(${c.id})">WA</button><button class="red" onclick="deleteCustomer(${c.id})">Delete</button></td></tr>`}).join('')}</table>`:'<div class="empty">No customers found</div>'}</div>`;
 }
 function deleteCustomer(id){if(confirm('Delete customer? Their orders will remain in the database.')){db.customers=db.customers.filter(c=>c.id!=id);save();renderAll();toast('Customer deleted')}}
 const SCREW_TYPES=['South Screw','Bombay Screw','Kambi Posting','South Screw without Biradai','Bombay Screw without Biradai'];
@@ -438,13 +446,14 @@ function updateOrderCustomerInfo(){
  const selectedDate=$('od')?.value||'';
  // Customer is Existing only when there is an earlier order for the same customer.
  // The current order itself is never counted, so a first order remains New.
- const hasEarlierOrder=db.orders.some(o=>{
-   if(String(o.customerId)!==String(id)) return false;
-   if(editingId && Number(o.id)===editingId) return false;
+ const priorOrders=customerOrders(id,editingId);
+ // Creating a new order: ANY already-saved order means this is an Existing Customer.
+ // Editing an order: only an earlier saved order counts; the current order itself never counts.
+ const hasEarlierOrder=editingId ? priorOrders.some(o=>{
    const od=String(o.orderDate||'');
    if(!selectedDate || !od) return true;
    return od<selectedDate || (od===selectedDate && Number(o.id)<editingId);
- });
+ }) : priorOrders.length>0;
  const label=hasEarlierOrder?'🔁 Existing Customer':'🆕 New Customer';
  $('orderCustomerInfo').innerHTML=esc(c.name||'-')+' - 📱 '+esc(c.mobile||'-')+' &nbsp; <b>'+label+'</b>';
 }
@@ -454,8 +463,6 @@ function saveOrder(id){
  if(!x.orderTakenBy)return toast('Order Taken By is required');
  let target=id?ord(id):null;
  if(target)Object.assign(target,x);else{target={id:Date.now(),...x};db.orders.push(target)}
- const linkedCustomer=cust(x.customerId);
- if(linkedCustomer)linkedCustomer.customerType='Existing';
  if(target.status==='Delivered'&&!target.delivered)target.delivered=new Date().toISOString().slice(0,10);
  save();closeModal();renderAll();toast('Order saved as '+target.status);
 }
