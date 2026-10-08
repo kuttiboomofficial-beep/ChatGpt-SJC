@@ -258,6 +258,10 @@ function cityMatches(value){
   const contains=CITY_NAMES.filter(c=>!c.toLowerCase().startsWith(q)&&c.toLowerCase().includes(q));
   return [...starts,...contains].slice(0,10);
 }
+function formatCityName(value){
+  const s=String(value||'').trim().replace(/\s+/g,' ').toLowerCase();
+  return s ? s.charAt(0).toUpperCase()+s.slice(1) : '';
+}
 function cityState(value){
   const q=String(value||'').trim().toLowerCase();
   const key=CITY_NAMES.find(c=>c.toLowerCase()===q);
@@ -309,7 +313,7 @@ function renderCitySuggestions(){
 }
 function chooseCity(name){
   const city=$('cc'),state=$('cstate');
-  if(city)city.value=name;
+  if(city)city.value=formatCityName(name);
   if(state)state.value=CITY_STATE[name]||'';
   const box=$('citySuggestions');if(box){box.innerHTML='';box.style.display='none';}
 }
@@ -340,7 +344,7 @@ async function confirmCityField(){
   if(!city||!state)return '';
   const q=city.value.trim();
   const exact=findCityKey(q);
-  if(exact){city.value=exact;state.value=CITY_STATE[exact]||'';return state.value;}
+  if(exact){city.value=formatCityName(exact);state.value=CITY_STATE[exact]||'';return state.value;}
   if(!q){state.value='';return '';}
   state.value='Searching...';
   const st=await resolveCityState(q);
@@ -370,7 +374,7 @@ function openCustomer(id){
 async function saveCustomer(id){
   await confirmCityField();
   applyCustomerNameFormats();
-  let x={name:formatPersonName($('cn').value),mobile:$('cm').value.trim(),shop:formatJewelleryName($('cs').value),alt:$('ca').value.trim(),city:$('cc').value.trim(),state:$('cstate').value.trim(),address:$('caddr').value.trim(),notes:$('cnotes').value.trim()};
+  let x={name:formatPersonName($('cn').value),mobile:$('cm').value.trim(),shop:formatJewelleryName($('cs').value),alt:$('ca').value.trim(),city:formatCityName($('cc').value),state:$('cstate').value.trim(),address:$('caddr').value.trim(),notes:$('cnotes').value.trim()};
   if(!x.name||!x.mobile)return toast('Name and mobile required');
   if(id)Object.assign(cust(id),x);else db.customers.push({id:Date.now(),...x,customerType:'New',dateAdded:new Date().toISOString().slice(0,10)});
   save();closeModal();renderAll();toast('Customer saved');
