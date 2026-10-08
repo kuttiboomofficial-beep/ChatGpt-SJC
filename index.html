@@ -125,7 +125,7 @@ const KEY='sjc_business_v7';
 const OLD_KEYS=['sjc_business_v6','sjc_business_v5','sjc_business_v3'];
 const STATUS=['Pending','Started','Finished','Delivered','Cancelled'];
 const defaults={
- settings:{company:'SHREE JI GOLD CREATOR LLP',subtitle:'Customer CRM • Orders • Production • WhatsApp • Reports',phone:'',address:'',country:'91',defaultType:'Direct',defaultStatus:'Pending',version:'7.1.0',logo:'',staff:[],confirmationPeople:[],security:{enabled:false,pinHash:'',autoLockMinutes:10}},
+ settings:{company:'SHREE JI GOLD CREATOR LLP',subtitle:'Customer CRM • Orders • Production • WhatsApp • Reports',phone:'',address:'',country:'91',defaultType:'Direct',defaultStatus:'Pending',version:'7.1.0',logo:'',staff:[],security:{enabled:false,pinHash:'',autoLockMinutes:10}},
  customers:[],orders:[],exhibitions:[],
  templates:[
   {id:'confirm',name:'Order Received Thank You',body:'Dear {{name}},\\n\\nThank you for your valuable order.\\nOrder: {{order}}\\nWeight: {{weight}}g\\n\\nThank you.'},
@@ -206,20 +206,19 @@ function load(){
   if(!raw){ for(const k of OLD_KEYS){ const old=localStorage.getItem(k); if(old){ raw=old; break; } } }
   let x=raw?JSON.parse(raw):null;
   if(!x)return structuredClone(defaults);
-  return {...structuredClone(defaults),...x,settings:{...defaults.settings,...(x.settings||{}),staff:Array.isArray(x.settings?.staff)?x.settings.staff:[],confirmationPeople:Array.isArray(x.settings?.confirmationPeople)?x.settings.confirmationPeople:[]},templates:x.templates||structuredClone(defaults.templates),customers:x.customers||[],orders:x.orders||[],exhibitions:x.exhibitions||[]};
+  return {...structuredClone(defaults),...x,settings:{...defaults.settings,...(x.settings||{}),staff:Array.isArray(x.settings?.staff)?x.settings.staff:[]},templates:x.templates||structuredClone(defaults.templates),customers:x.customers||[],orders:x.orders||[],exhibitions:x.exhibitions||[]};
  }catch(e){return structuredClone(defaults)}
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(db))}
 function toast(s){$('toast').textContent=s;$('toast').style.display='block';clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>{$('toast').style.display='none'},1800)}
 function cust(id){return db.customers.find(x=>String(x.id)===String(id))||{name:'Unknown',shop:'',mobile:'',city:'',state:'',address:''}}
 function ord(id){return db.orders.find(x=>String(x.id)===String(id))}
-function cleanName(v){return String(v||'').trim().replace(/\s+/g,' ').split(' ').map(w=>w?w.charAt(0).toUpperCase()+w.slice(1).toLowerCase():'').join(' ')}
-function upperName(v){return String(v||'').trim().replace(/\s+/g,' ').toUpperCase()}
 function staffList(){return Array.isArray(db.settings.staff)?db.settings.staff.filter(x=>String(x||'').trim()).map(x=>String(x).trim()):[]}
-function confirmationList(){return Array.isArray(db.settings.confirmationPeople)?db.settings.confirmationPeople.filter(x=>String(x||'').trim()).map(x=>String(x).trim()):[]}
-function optionsFrom(list,selected,blankLabel){let a=list.slice();if(selected && !a.includes(selected))a=[selected,...a];return '<option value="">'+blankLabel+'</option>'+a.map(n=>'<option value="'+esc(n)+'" '+(n===selected?'selected':'')+'>'+esc(n)+'</option>').join('')}
-function staffOptions(selected){return optionsFrom(staffList(),selected,'-- Select Staff --')}
-function confirmationOptions(selected){return optionsFrom(confirmationList(),selected,'-- Select Confirmation Person --')}
+function staffOptions(selected,allowBlank=true){
+ let a=staffList(),html=allowBlank?'<option value="">-- Select Staff --</option>':'';
+ if(selected && !a.includes(selected))a=[selected,...a];
+ return html+a.map(n=>'<option value="'+esc(n)+'" '+(n===selected?'selected':'')+'>'+esc(n)+'</option>').join('');
+}
 function fmt(n){return Number(n||0).toFixed(2)}
 function badge(s){s=s||'Pending';return '<span class="status s-'+esc(s)+'">'+esc(s)+'</span>'}
 function nav(){
@@ -269,8 +268,37 @@ function findCityKey(value){
   if(!q)return '';
   return CITY_NAMES.find(c=>c.toLowerCase()===q) || CITY_NAMES.find(c=>c.toLowerCase().replace(/[^a-z0-9]/g,'')===q.replace(/[^a-z0-9]/g,'')) || '';
 }
-async function lookupCityStateOnline(value){ return cityState(value); }
-async function resolveCityState(value){ return cityState(value); }
+async function lookupCityStateOnline(value){
+  const q=String(value||'').trim();
+  if(!q)return '';
+  try{
+    const url='https://photon.komoot.io/api/?q='+encodeURIComponent(q+', India')+'&limit=10&lang=en';
+    const r=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(r.ok){
+      const d=await r.json();
+      const hit=(d.features||[]).find(f=>{
+        const p=f.properties||{};
+        return String(p.country||'').toLowerCase()==='india' && p.state;
+      });
+      if(hit) return String(hit.properties.state).trim();
+    }
+  }catch(e){}
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=in&q='+encodeURIComponent(q);
+    const r=await fetch(url);
+    if(r.ok){
+      const d=await r.json();
+      const hit=(d||[]).find(x=>x.address&&x.address.country_code==='in'&&x.address.state);
+      if(hit)return String(hit.address.state).trim();
+    }
+  }catch(e){}
+  return '';
+}
+async function resolveCityState(value){
+  const local=cityState(value);
+  if(local)return local;
+  return await lookupCityStateOnline(value);
+}
 function renderCitySuggestions(){
   const city=$('cc'),box=$('citySuggestions');
   if(!city||!box)return;
@@ -285,12 +313,27 @@ function chooseCity(name){
   if(state)state.value=CITY_STATE[name]||'';
   const box=$('citySuggestions');if(box){box.innerHTML='';box.style.display='none';}
 }
+let cityLookupTimer=null;
+let cityLookupSeq=0;
 function autoCityState(){
   const city=$('cc'),state=$('cstate');
   if(!city||!state)return;
-  const st=cityState(city.value);
-  if(st)state.value=st;
+  const q=city.value.trim();
+  const st=cityState(q);
+  if(st){state.value=st;}
+  else if(!q){state.value='';}
   renderCitySuggestions();
+  clearTimeout(cityLookupTimer);
+  if(!q || st || q.length<3)return;
+  const seq=++cityLookupSeq;
+  cityLookupTimer=setTimeout(async()=>{
+    const live=$('cc'),liveState=$('cstate');
+    if(!live||!liveState||live.value.trim()!==q)return;
+    liveState.value='Searching...';
+    const found=await resolveCityState(q);
+    if(seq!==cityLookupSeq || !live||live.value.trim()!==q)return;
+    liveState.value=found||'';
+  },500);
 }
 async function confirmCityField(){
   const city=$('cc'),state=$('cstate');
@@ -298,23 +341,25 @@ async function confirmCityField(){
   const q=city.value.trim();
   const exact=findCityKey(q);
   if(exact){city.value=exact;state.value=CITY_STATE[exact]||'';return state.value;}
+  if(!q){state.value='';return '';}
+  state.value='Searching...';
   const st=await resolveCityState(q);
-  if(st)state.value=st;
-  return st;
+  if(city.value.trim()===q)state.value=st||'';
+  return st||'';
 }
 
 function openCustomer(id){
  let c=id?cust(id):{name:'',shop:'',mobile:'',alt:'',city:'',state:'',address:'',notes:''};
- modal(id?'Edit Customer':'New Customer','<div class="formgrid"><div><label>Contact Person *</label><input id="cn" value="'+esc(c.name)+'" onblur="this.value=cleanName(this.value)"></div><div><label>Mobile *</label><input id="cm" value="'+esc(c.mobile)+'"></div><div><label>Jewellery Name</label><input id="cs" value="'+esc(c.shop)+'" onblur="this.value=upperName(this.value)"></div><div><label>Alternate Mobile</label><input id="ca" value="'+esc(c.alt)+'"></div><div class="city-field"><label>City</label><input id="cc" autocomplete="off" list="cityList" placeholder="Type city e.g. C" oninput="autoCityState()" onblur="confirmCityField()" onfocus="renderCitySuggestions()" value="'+esc(c.city)+'"><datalist id="cityList">'+CITY_NAMES.map(n=>'<option value="'+esc(n)+'">'+esc(CITY_STATE[n])+'</option>').join('')+'</datalist><div id="citySuggestions" class="city-suggestions"></div></div><div><label>State</label><input id="cstate" readonly placeholder="Auto-filled from city" value="'+esc(c.state)+'"></div><div class="full"><label>Full Address</label><textarea id="caddr" rows="3">'+esc(c.address)+'</textarea></div><div class="full"><label>Notes</label><textarea id="cnotes">'+esc(c.notes)+'</textarea></div></div><div class="actions"><button class="orange" onclick="saveCustomer('+(id||0)+')">Save Customer</button></div>');
+ modal(id?'Edit Customer':'New Customer','<div class="formgrid"><div><label>Contact Person *</label><input id="cn" value="'+esc(c.name)+'"></div><div><label>Mobile *</label><input id="cm" value="'+esc(c.mobile)+'"></div><div><label>Jewellery Name</label><input id="cs" value="'+esc(c.shop)+'"></div><div><label>Alternate Mobile</label><input id="ca" value="'+esc(c.alt)+'"></div><div class="city-field"><label>City</label><input id="cc" autocomplete="off" list="cityList" placeholder="Type city e.g. C" oninput="autoCityState()" onblur="confirmCityField()" onfocus="renderCitySuggestions()" value="'+esc(c.city)+'"><datalist id="cityList">'+CITY_NAMES.map(n=>'<option value="'+esc(n)+'">'+esc(CITY_STATE[n])+'</option>').join('')+'</datalist><div id="citySuggestions" class="city-suggestions"></div></div><div><label>State</label><input id="cstate" readonly placeholder="Auto-filled from city" value="'+esc(c.state)+'"></div><div class="full"><label>Full Address</label><textarea id="caddr" rows="3">'+esc(c.address)+'</textarea></div><div class="full"><label>Notes</label><textarea id="cnotes">'+esc(c.notes)+'</textarea></div></div><div class="actions"><button class="orange" onclick="saveCustomer('+(id||0)+')">Save Customer</button></div>');
  autoCityState();
 }
 
-function saveCustomer(id){
-autoCityState();
- let x={name:cleanName($('cn').value),mobile:$('cm').value.trim(),shop:upperName($('cs').value),alt:$('ca').value.trim(),city:$('cc').value.trim(),state:$('cstate').value.trim(),address:$('caddr').value.trim(),notes:$('cnotes').value.trim()};
- if(!x.name||!x.mobile)return toast('Name and mobile required');
- if(id)Object.assign(cust(id),x);else db.customers.push({id:Date.now(),...x,customerType:'New',dateAdded:new Date().toISOString().slice(0,10)});
- save();closeModal();renderAll();toast('Customer saved');
+async function saveCustomer(id){
+  await confirmCityField();
+  let x={name:$('cn').value.trim(),mobile:$('cm').value.trim(),shop:$('cs').value.trim(),alt:$('ca').value.trim(),city:$('cc').value.trim(),state:$('cstate').value.trim(),address:$('caddr').value.trim(),notes:$('cnotes').value.trim()};
+  if(!x.name||!x.mobile)return toast('Name and mobile required');
+  if(id)Object.assign(cust(id),x);else db.customers.push({id:Date.now(),...x,customerType:'New',dateAdded:new Date().toISOString().slice(0,10)});
+  save();closeModal();renderAll();toast('Customer saved');
 }
 function setCustomerType(id,value){
  const c=cust(id);
@@ -331,10 +376,10 @@ function deleteCustomer(id){if(confirm('Delete customer? Their orders will remai
 function openOrder(id){
  if(!db.customers.length)return toast('Add a customer first');
  let today=new Date().toISOString().slice(0,10);
- let o=id?ord(id):{orderNo:'SJ-'+new Date().getFullYear()+'-'+String(db.orders.length+1).padStart(4,'0'),orderDate:today,customerId:'',type:db.settings.defaultType,status:db.settings.defaultStatus,weight:'',touch:'',screw:'',ladyRing:'',gentRing:'',huid:'Yes',advanceMode:'Cash',advanceAmount:'',startDate:'',delivered:'',exhibitionId:'',notes:'',orderTakenBy:'',confirmationDate:'',confirmedBy:''};
+ let o=id?ord(id):{orderNo:'SJ-'+new Date().getFullYear()+'-'+String(db.orders.length+1).padStart(4,'0'),orderDate:today,customerId:'',type:db.settings.defaultType,status:db.settings.defaultStatus,weight:'',touch:'',screw:'',ladyRing:'',gentRing:'',huid:'Yes',advanceMode:'Cash',advanceAmount:'',startDate:'',delivered:'',exhibitionId:'',notes:'',orderTakenBy:'',confirmationDate:today,confirmedBy:''};
  let takenBy=o.orderTakenBy||'',confirmedBy=o.confirmedBy||'',confirmationDate=o.confirmationDate||'';
- modal(id?'Edit Order':'New Order','<div class="formgrid"><div><label>Order Number *</label><input id="ono" value="'+esc(o.orderNo)+'"></div><div><label>Order Date *</label><input id="od" type="date" value="'+esc(o.orderDate)+'"></div><div><label>Jewellery Name *</label><select id="oc" onchange="updateOrderCustomerInfo()"><option value="">-- Select Jewellery Name --</option>'+db.customers.map(c=>'<option value="'+c.id+'" '+(c.id==o.customerId?'selected':'')+'>'+esc(c.shop||'-')+'</option>').join('')+'</select><div id="orderCustomerInfo" class="muted" style="margin-top:7px;font-size:14px;font-weight:700"></div></div><div><label>Exhibition</label><select id="oex"><option value="">-- None --</option>'+db.exhibitions.map(e=>'<option value="'+e.id+'" '+(e.id==o.exhibitionId?'selected':'')+'>'+esc(e.name)+'</option>').join('')+'</select></div><div><label>Order Type *</label><select id="ot"><option '+(o.type==='Direct'?'selected':'')+'>Direct</option><option '+(o.type==='SM'?'selected':'')+'>SM</option></select></div><div><label>Weight (g) *</label><input id="ow" type="number" step=".001" value="'+esc(o.weight)+'"></div><div><label>Touch *</label><input id="touch" value="'+esc(o.touch)+'"></div><div><label>Screw Type</label><select id="screw"><option value="">-- Select Screw Type --</option>'+['South Screw','Bombay Screw','Kambi Posting','South Screw without Biradai','Bombay Screw without Biradai'].map(v=>'<option value="'+esc(v)+'" '+(o.screw===v?'selected':'')+'>'+esc(v)+'</option>').join('')+'</select></div><div><label>Lady\'s Ring Size</label><div class="formgrid" style="grid-template-columns:1fr 1fr;gap:8px"><select id="lrFrom"><option value="">From</option>'+Array.from({length:11},(_,i)=>7+i).map(v=>'<option value="'+v+'">'+v+'</option>').join('')+'</select><select id="lrTo"><option value="">To</option>'+Array.from({length:11},(_,i)=>7+i).map(v=>'<option value="'+v+'">'+v+'</option>').join('')+'</select></div></div><div><label>Gent\'s Ring Size</label><div class="formgrid" style="grid-template-columns:1fr 1fr;gap:8px"><select id="grFrom"><option value="">From</option>'+Array.from({length:15},(_,i)=>15+i).map(v=>'<option value="'+v+'">'+v+'</option>').join('')+'</select><select id="grTo"><option value="">To</option>'+Array.from({length:15},(_,i)=>15+i).map(v=>'<option value="'+v+'">'+v+'</option>').join('')+'</select></div></div><div><label>HUID</label><select id="huid"><option '+(o.huid!=='No'?'selected':'')+'>Yes</option><option '+(o.huid==='No'?'selected':'')+'>No</option></select></div><div><label>Advance Mode</label><select id="am"><option '+(o.advanceMode==='Cash'?'selected':'')+'>Cash</option><option '+(o.advanceMode==='Gpay'?'selected':'')+'>Gpay</option><option '+(o.advanceMode==='Bank'?'selected':'')+'>Bank</option></select></div><div><label>Advance Amount (₹)</label><input id="adv" type="number" step=".01" value="'+esc(o.advanceAmount)+'"></div><div><label>Start Date</label><input id="sd" type="date" value="'+esc(o.startDate)+'"></div><div><label>Status</label><select id="orderStatus">'+STATUS.map(s=>'<option value="'+s+'" '+((o.status||'Pending')===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div><div><label>Delivered Date</label><input id="dd" type="date" value="'+esc(o.delivered)+'"></div><div><label>Order Taken By</label><select id="orderTakenBy">'+staffOptions(takenBy)+'</select></div><div><label>Order Confirmation Date</label><input id="confirmationDate" type="date" value="'+esc(confirmationDate)+'"></div><div><label>Confirmed By</label><select id="confirmedBy">'+confirmationOptions(confirmedBy)+'</select></div><div class="full"><div class="danger-note">💡 Order staff and confirmation persons can be added separately in <b>Settings</b>. These details are saved with the order and shown in Order Management, Reports, CSV and print slips.</div></div><div class="full"><label>Notes</label><textarea id="onotes" rows="3">'+esc(o.notes)+'</textarea></div></div><div class="actions"><button class="orange" onclick="saveOrder('+(id||0)+')">Save Order</button></div>');
- const lrParts=String(o.ladyRing||'').split(/\s+to\s+/i),grParts=String(o.gentRing||'').split(/\s+to\s+/i); if($('lrFrom'))$('lrFrom').value=lrParts[0]||''; if($('lrTo'))$('lrTo').value=lrParts[1]||''; if($('grFrom'))$('grFrom').value=grParts[0]||''; if($('grTo'))$('grTo').value=grParts[1]||''; updateOrderCustomerInfo();
+ modal(id?'Edit Order':'New Order','<div class="formgrid"><div><label>Order Number *</label><input id="ono" value="'+esc(o.orderNo)+'"></div><div><label>Order Date *</label><input id="od" type="date" value="'+esc(o.orderDate)+'"></div><div><label>Jewellery Name *</label><select id="oc" onchange="updateOrderCustomerInfo()"><option value="">-- Select Jewellery Name --</option>'+db.customers.map(c=>'<option value="'+c.id+'" '+(c.id==o.customerId?'selected':'')+'>'+esc(c.shop||'-')+'</option>').join('')+'</select><div id="orderCustomerInfo" class="muted" style="margin-top:7px;font-size:14px;font-weight:700"></div></div><div><label>Exhibition</label><select id="oex"><option value="">-- None --</option>'+db.exhibitions.map(e=>'<option value="'+e.id+'" '+(e.id==o.exhibitionId?'selected':'')+'>'+esc(e.name)+'</option>').join('')+'</select></div><div><label>Order Type *</label><select id="ot"><option '+(o.type==='Direct'?'selected':'')+'>Direct</option><option '+(o.type==='SM'?'selected':'')+'>SM</option></select></div><div><label>Weight (g) *</label><input id="ow" type="number" step=".001" value="'+esc(o.weight)+'"></div><div><label>Touch *</label><input id="touch" value="'+esc(o.touch)+'"></div><div><label>Screw Type</label><input id="screw" value="'+esc(o.screw)+'"></div><div><label>Lady\'s Ring Size</label><input id="lr" value="'+esc(o.ladyRing)+'"></div><div><label>Gent\'s Ring Size</label><input id="gr" value="'+esc(o.gentRing)+'"></div><div><label>HUID</label><select id="huid"><option '+(o.huid!=='No'?'selected':'')+'>Yes</option><option '+(o.huid==='No'?'selected':'')+'>No</option></select></div><div><label>Advance Mode</label><select id="am"><option '+(o.advanceMode==='Cash'?'selected':'')+'>Cash</option><option '+(o.advanceMode==='Gpay'?'selected':'')+'>Gpay</option><option '+(o.advanceMode==='Bank'?'selected':'')+'>Bank</option></select></div><div><label>Advance Amount (₹)</label><input id="adv" type="number" step=".01" value="'+esc(o.advanceAmount)+'"></div><div><label>Start Date</label><input id="sd" type="date" value="'+esc(o.startDate)+'"></div><div><label>Status</label><select id="orderStatus">'+STATUS.map(s=>'<option value="'+s+'" '+((o.status||'Pending')===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div><div><label>Delivered Date</label><input id="dd" type="date" value="'+esc(o.delivered)+'"></div><div><label>Order Taken By *</label><select id="orderTakenBy">'+staffOptions(takenBy)+'</select></div><div><label>Order Confirmation Date *</label><input id="confirmationDate" type="date" value="'+esc(confirmationDate)+'"></div><div><label>Confirmed By *</label><select id="confirmedBy">'+staffOptions(confirmedBy)+'</select></div><div class="full"><div class="danger-note">💡 Staff names can be added in <b>Settings → Staff Names</b>. These details are saved with the order and shown in Order Management, Reports, CSV and print slips.</div></div><div class="full"><label>Notes</label><textarea id="onotes" rows="3">'+esc(o.notes)+'</textarea></div></div><div class="actions"><button class="orange" onclick="saveOrder('+(id||0)+')">Save Order</button></div>');
+ updateOrderCustomerInfo();
 }
 function updateOrderCustomerInfo(){
  let id=$('oc')?.value;
@@ -346,8 +391,9 @@ function updateOrderCustomerInfo(){
  $('orderCustomerInfo').innerHTML=esc(c.name||'-')+' - 📱 '+esc(c.mobile||'-')+' &nbsp; <b>'+label+'</b>';
 }
 function saveOrder(id){
- let x={orderNo:$('ono').value.trim(),orderDate:$('od').value,customerId:Number($('oc').value),exhibitionId:$('oex').value?Number($('oex').value):'',type:$('ot').value,weight:Number($('ow').value)||0,touch:$('touch').value.trim(),screw:$('screw').value.trim(),ladyRing:($('lrFrom').value&&$('lrTo').value)?$('lrFrom').value+' to '+$('lrTo').value:'',gentRing:($('grFrom').value&&$('grTo').value)?$('grFrom').value+' to '+$('grTo').value:'',huid:$('huid').value,advanceMode:$('am').value,advanceAmount:Number($('adv').value)||0,startDate:$('sd').value,status:String($('orderStatus').value),delivered:$('dd').value,orderTakenBy:$('orderTakenBy').value.trim(),confirmationDate:$('confirmationDate').value,confirmedBy:$('confirmedBy').value.trim(),notes:$('onotes').value.trim()};
+ let x={orderNo:$('ono').value.trim(),orderDate:$('od').value,customerId:Number($('oc').value),exhibitionId:$('oex').value?Number($('oex').value):'',type:$('ot').value,weight:Number($('ow').value)||0,touch:$('touch').value.trim(),screw:$('screw').value.trim(),ladyRing:$('lr').value.trim(),gentRing:$('gr').value.trim(),huid:$('huid').value,advanceMode:$('am').value,advanceAmount:Number($('adv').value)||0,startDate:$('sd').value,status:String($('orderStatus').value),delivered:$('dd').value,orderTakenBy:$('orderTakenBy').value.trim(),confirmationDate:$('confirmationDate').value,confirmedBy:$('confirmedBy').value.trim(),notes:$('onotes').value.trim()};
  if(!x.orderNo||!x.orderDate||!x.customerId||!x.weight||!x.touch)return toast('Order No, date, jewellery name, weight and touch are required');
+ if(!x.orderTakenBy||!x.confirmationDate||!x.confirmedBy)return toast('Order Taken By, Confirmation Date and Confirmed By are required');
  let target=id?ord(id):null;
  if(target)Object.assign(target,x);else{target={id:Date.now(),...x};db.orders.push(target)}
  if(target.status==='Delivered'&&!target.delivered)target.delivered=new Date().toISOString().slice(0,10);
@@ -682,7 +728,7 @@ async function scanCard(){
  }catch(e){console.error(e);$('ocrStatus').textContent='OCR failed. Try a clearer, well-lit photo with the whole card visible.'}finally{$('scanBtn').disabled=false;}
 }
 function clearScan(){scanFile=null;if($('cardFile'))$('cardFile').value='';['snshop','sn','sm','sa','sc','ssc','saddr','ocrText'].forEach(id=>{if($(id))$(id).value=''});if($('cardImg')){$('cardImg').style.display='none';$('cardImg').removeAttribute('src')}if($('scanBtn'))$('scanBtn').disabled=true;if($('ocrStatus'))$('ocrStatus').textContent='Choose a card photo to begin.';const b=$('scannerCitySuggestions');if(b){b.innerHTML='';b.style.display='none';}}
-function saveScan(){const name=cleanName($('sn').value),mobile=$('sm').value.replace(/\D/g,'').slice(-10),city=$('sc').value.trim();if(!name||mobile.length!==10)return toast('Review Customer Name and 10-digit Mobile');db.customers.push({id:Date.now(),name,shop:upperName($('snshop').value),contactPerson:'',mobile,alt:$('sa').value.replace(/\D/g,'').slice(-10),city,address:$('saddr').value.trim(),state:cityState(city)||$('ssc').value.trim(),exhibition:'',notes:'From visiting card scanner',dateAdded:new Date().toISOString().slice(0,10)});save();toast('Customer saved');clearScan();go('customers');}
+function saveScan(){const name=$('sn').value.trim(),mobile=$('sm').value.replace(/\D/g,'').slice(-10),city=$('sc').value.trim();if(!name||mobile.length!==10)return toast('Review Customer Name and 10-digit Mobile');db.customers.push({id:Date.now(),name,shop:$('snshop').value.trim(),contactPerson:'',mobile,alt:$('sa').value.replace(/\D/g,'').slice(-10),city,address:$('saddr').value.trim(),state:cityState(city)||$('ssc').value.trim(),exhibition:'',notes:'From visiting card scanner',dateAdded:new Date().toISOString().slice(0,10)});save();toast('Customer saved');clearScan();go('customers');}
 function bytesToB64(bytes){let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));return btoa(bin)}
 function b64ToBytes(s){let bin=atob(s),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return a}
 async function deriveBackupKey(pin,salt){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:120000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
@@ -711,7 +757,7 @@ function renderBackup(){
 }
 function resetData(){if(confirm('RESET ALL APP DATA? This cannot be undone. Export a backup first.')){localStorage.removeItem(KEY);location.reload()}}
 function renderSettings(){
- $('settings').innerHTML='<h2>Settings</h2><div class="card"><div class="formgrid"><div><label>Company Name</label><input id="setCompany" value="'+esc(db.settings.company)+'"></div><div><label>Company Subtitle</label><input id="setSubtitle" value="'+esc(db.settings.subtitle)+'"></div><div><label>Company Phone</label><input id="setPhone" value="'+esc(db.settings.phone)+'"></div><div><label>WhatsApp Country Code</label><input id="setCountry" value="'+esc(db.settings.country)+'"></div><div class="full"><label>Company Address</label><textarea id="setAddress">'+esc(db.settings.address)+'</textarea></div><div><label>Default Order Type</label><select id="setType"><option '+(db.settings.defaultType==='Direct'?'selected':'')+'>Direct</option><option '+(db.settings.defaultType==='SM'?'selected':'')+'>SM</option></select></div><div><label>Default Status</label><select id="setStatus">'+STATUS.map(s=>'<option '+(db.settings.defaultStatus===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div><div><label>Theme</label><input value="Orange + Black Professional" disabled></div><div><label>App Version</label><input value="'+esc(db.settings.version)+'" disabled></div><div><label>Order Taking Staff Names</label><input id="setStaff" value="'+esc(staffList().join(', '))+'" placeholder="Example: Praveen, Ravi, Kumar"><div class="muted" style="margin-top:6px">Only these names appear in Order Taken By.</div></div><div><label>Confirmation Person Names</label><input id="setConfirmPeople" value="'+esc(confirmationList().join(', '))+'" placeholder="Example: Sir, Manager, Owner"><div class="muted" style="margin-top:6px">Only these names appear in Confirmed By.</div></div></div><div class="actions"><button class="orange" onclick="saveSettings()">Save Settings</button><button onclick="go(\'backup\')">Backup & Restore</button><button class="red" onclick="resetData()">Reset Data</button></div></div><div class="card"><h3>🔐 App Security</h3><p>Protect the app on this device with a PIN and automatic locking.</p><div class="formgrid"><div><label>Auto Lock</label><select id="setAutoLock"><option value="5" '+(Number(db.settings.security?.autoLockMinutes)===5?'selected':'')+'>5 minutes</option><option value="10" '+(Number(db.settings.security?.autoLockMinutes)===10?'selected':'')+'>10 minutes</option><option value="15" '+(Number(db.settings.security?.autoLockMinutes)===15?'selected':'')+'>15 minutes</option></select></div><div><label>PIN Status</label><input value="'+(securityEnabled()?'Enabled':'Not set')+'" disabled></div></div><div class="actions"><button class="orange" onclick="changeSecurityPin()">Change PIN</button><button onclick="lockApp()">🔒 Lock Now</button></div></div><div class="card"><h3>About App</h3><p>SHREE JI CONNECT — Business Class CRM<br>Version '+esc(db.settings.version)+'<br>Offline-first local database.</p></div>';
+ $('settings').innerHTML='<h2>Settings</h2><div class="card"><div class="formgrid"><div><label>Company Name</label><input id="setCompany" value="'+esc(db.settings.company)+'"></div><div><label>Company Subtitle</label><input id="setSubtitle" value="'+esc(db.settings.subtitle)+'"></div><div><label>Company Phone</label><input id="setPhone" value="'+esc(db.settings.phone)+'"></div><div><label>WhatsApp Country Code</label><input id="setCountry" value="'+esc(db.settings.country)+'"></div><div class="full"><label>Company Address</label><textarea id="setAddress">'+esc(db.settings.address)+'</textarea></div><div><label>Default Order Type</label><select id="setType"><option '+(db.settings.defaultType==='Direct'?'selected':'')+'>Direct</option><option '+(db.settings.defaultType==='SM'?'selected':'')+'>SM</option></select></div><div><label>Default Status</label><select id="setStatus">'+STATUS.map(s=>'<option '+(db.settings.defaultStatus===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div><div><label>Theme</label><input value="Orange + Black Professional" disabled></div><div><label>App Version</label><input value="'+esc(db.settings.version)+'" disabled></div><div class="full"><label>Staff Names</label><input id="setStaff" value="'+esc(staffList().join(', '))+'" placeholder="Example: Praveen, Ravi, Kumar"><div class="muted" style="margin-top:6px">Enter staff names separated by commas. These names appear in Order Taken By and Confirmed By.</div></div></div><div class="actions"><button class="orange" onclick="saveSettings()">Save Settings</button><button onclick="go(\'backup\')">Backup & Restore</button><button class="red" onclick="resetData()">Reset Data</button></div></div><div class="card"><h3>🔐 App Security</h3><p>Protect the app on this device with a PIN and automatic locking.</p><div class="formgrid"><div><label>Auto Lock</label><select id="setAutoLock"><option value="5" '+(Number(db.settings.security?.autoLockMinutes)===5?'selected':'')+'>5 minutes</option><option value="10" '+(Number(db.settings.security?.autoLockMinutes)===10?'selected':'')+'>10 minutes</option><option value="15" '+(Number(db.settings.security?.autoLockMinutes)===15?'selected':'')+'>15 minutes</option></select></div><div><label>PIN Status</label><input value="'+(securityEnabled()?'Enabled':'Not set')+'" disabled></div></div><div class="actions"><button class="orange" onclick="changeSecurityPin()">Change PIN</button><button onclick="lockApp()">🔒 Lock Now</button></div></div><div class="card"><h3>About App</h3><p>SHREE JI CONNECT — Business Class CRM<br>Version '+esc(db.settings.version)+'<br>Offline-first local database.</p></div>';
 }
 function changeSecurityPin(){
  if(!securityEnabled())return showSecurityScreen('setup');
@@ -719,7 +765,7 @@ function changeSecurityPin(){
  const a=prompt('Enter new 4–6 digit PIN:');if(!a||!/\d{4,6}/.test(a))return toast('PIN must be 4–6 digits');const b=prompt('Confirm new PIN:');if(a!==b)return toast('PINs do not match');db.settings.security.pinHash=securityHash(a);save();toast('PIN changed');lockApp();
 }
 function saveSettings(){
- db.settings.company=$('setCompany').value.trim();db.settings.subtitle=$('setSubtitle').value.trim();db.settings.phone=$('setPhone').value.trim();db.settings.country=$('setCountry').value.replace(/\D/g,'')||'91';db.settings.address=$('setAddress').value.trim();db.settings.defaultType=$('setType').value;db.settings.defaultStatus=$('setStatus').value;db.settings.staff=String($('setStaff')?.value||'').split(',').map(x=>cleanName(x)).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i);db.settings.confirmationPeople=String($('setConfirmPeople')?.value||'').split(',').map(x=>cleanName(x)).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i);db.settings.security={...defaults.settings.security,...(db.settings.security||{}),autoLockMinutes:Number($('setAutoLock')?.value)||10};save();renderAll();startSecurityTimer();toast('Settings saved');
+ db.settings.company=$('setCompany').value.trim();db.settings.subtitle=$('setSubtitle').value.trim();db.settings.phone=$('setPhone').value.trim();db.settings.country=$('setCountry').value.replace(/\D/g,'')||'91';db.settings.address=$('setAddress').value.trim();db.settings.defaultType=$('setType').value;db.settings.defaultStatus=$('setStatus').value;db.settings.staff=String($('setStaff')?.value||'').split(',').map(x=>x.trim()).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i);db.settings.security={...defaults.settings.security,...(db.settings.security||{}),autoLockMinutes:Number($('setAutoLock')?.value)||10};save();renderAll();startSecurityTimer();toast('Settings saved');
 }
 function renderMenu(){
  $('menu').innerHTML='<h2>Menu</h2><div class="tiles">'+[['dashboard','Dashboard'],['customers','Customer CRM'],['orders','Order Management'],['production','Production'],['reports','Database Reports'],['whatsapp','WhatsApp Center'],['templates','Message Templates'],['exhibitions','Exhibitions'],['print','Print Center'],['scanner','Visiting Card Scanner'],['backup','Backup & Restore'],['settings','Settings']].map(x=>'<div class="tile"><h3>'+x[1]+'</h3><button class="orange" onclick="go(\''+x[0]+'\')">Open</button></div>').join('')+'</div>';
