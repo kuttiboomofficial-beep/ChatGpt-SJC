@@ -97,6 +97,7 @@ td button{margin:2px;padding:8px 10px;font-size:13px}
 @media print{.no-print{display:none!important}.print-only{display:inline!important}.security-overlay{display:none!important}}
 
 .compact-expo-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.expo-kpi{border:1px solid #ddd;text-align:left;cursor:pointer;min-height:108px;padding:14px}.expo-kpi:hover{transform:translateY(-1px)}.expo-kpi .kpi{font-size:26px;margin:5px 0}.report-head{margin-bottom:10px}.report-head h3{margin:0 0 4px}@media(max-width:800px){.compact-expo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.customer-type-badge{display:inline-block;padding:7px 10px;border-radius:999px;font-weight:800;font-size:13px;white-space:nowrap}.customer-type-badge.new{background:#fff0df;color:#b65b00}.customer-type-badge.existing{background:#e7f7ee;color:#168b58}
 </style>
 </head>
 <body>
@@ -379,16 +380,10 @@ async function saveCustomer(id){
   if(id)Object.assign(cust(id),x);else db.customers.push({id:Date.now(),...x,customerType:'New',dateAdded:new Date().toISOString().slice(0,10)});
   save();closeModal();renderAll();toast('Customer saved');
 }
-function setCustomerType(id,value){
- const c=cust(id);
- if(!c||!['New','Existing'].includes(value))return;
- c.customerType=value;
- save();
- toast(value==='Existing'?'Marked as Existing Customer':'Marked as New Customer');
-}
+function syncCustomerTypes(){db.customers.forEach(c=>{c.customerType=db.orders.some(o=>String(o.customerId)===String(c.id))?'Existing':'New'});save();}
 function renderCustomers(){
  let q=($('cq')?.value||'').toLowerCase(),a=db.customers.filter(c=>(c.name+' '+c.shop+' '+c.mobile+' '+c.city+' '+c.state).toLowerCase().includes(q));
- $('customers').innerHTML=`<h2>Customer CRM</h2><div class="actions"><button class="orange" onclick="openCustomer()">+ New Customer</button><button class="no-print" onclick="printCustomers()">🖨️ Print Customers</button><input id="cq" placeholder="Search customer / shop / mobile / city" value="${esc(q)}" oninput="renderCustomers()"></div><div class="card tablewrap">${a.length?`<table><tr><th>Jewellery Name</th><th>Contact Person</th><th>Mobile</th><th>City</th><th>State</th><th>Customer Type</th><th class="no-print">Actions</th></tr>${a.map(c=>{let current=c.customerType||(db.orders.some(o=>String(o.customerId)===String(c.id))?'Existing':'New');return `<tr><td><b>${esc(c.shop||'-')}</b></td><td>${esc(c.name||'-')}</td><td>${esc(c.mobile||'-')}</td><td>${esc(c.city||'-')}</td><td>${esc(c.state||'-')}</td><td><select class="customer-type-select no-print" onchange="setCustomerType(${c.id},this.value)"><option value="New" ${current==='New'?'selected':''}>🆕 New Customer</option><option value="Existing" ${current==='Existing'?'selected':''}>🔁 Existing Customer</option></select><span class="print-only">${current==='Existing'?'🔁 Existing Customer':'🆕 New Customer'}</span></td><td class="no-print"><button class="light" onclick="openCustomer(${c.id})">Edit</button><button class="green" onclick="openWA(${c.id})">WA</button><button class="red" onclick="deleteCustomer(${c.id})">Delete</button></td></tr>`}).join('')}</table>`:'<div class="empty">No customers found</div>'}</div>`;
+ $('customers').innerHTML=`<h2>Customer CRM</h2><div class="actions"><button class="orange" onclick="openCustomer()">+ New Customer</button><button class="no-print" onclick="printCustomers()">🖨️ Print Customers</button><input id="cq" placeholder="Search customer / shop / mobile / city" value="${esc(q)}" oninput="renderCustomers()"></div><div class="card tablewrap">${a.length?`<table><tr><th>Jewellery Name</th><th>Contact Person</th><th>Mobile</th><th>City</th><th>State</th><th>Customer Type</th><th class="no-print">Actions</th></tr>${a.map(c=>{let current=db.orders.some(o=>String(o.customerId)===String(c.id))?'Existing':'New';return `<tr><td><b>${esc(c.shop||'-')}</b></td><td>${esc(c.name||'-')}</td><td>${esc(c.mobile||'-')}</td><td>${esc(c.city||'-')}</td><td>${esc(c.state||'-')}</td><td>${current==='Existing'?'<span class="customer-type-badge existing">🔁 Existing Customer</span>':'<span class="customer-type-badge new">🆕 New Customer</span>'}</td><td class="no-print"><button class="light" onclick="openCustomer(${c.id})">Edit</button><button class="green" onclick="openWA(${c.id})">WA</button><button class="red" onclick="deleteCustomer(${c.id})">Delete</button></td></tr>`}).join('')}</table>`:'<div class="empty">No customers found</div>'}</div>`;
 }
 function deleteCustomer(id){if(confirm('Delete customer? Their orders will remain in the database.')){db.customers=db.customers.filter(c=>c.id!=id);save();renderAll();toast('Customer deleted')}}
 function openOrder(id){
@@ -414,6 +409,8 @@ function saveOrder(id){
  if(!x.orderTakenBy||!x.confirmationDate||!x.confirmedBy)return toast('Order Taken By, Confirmation Date and Confirmed By are required');
  let target=id?ord(id):null;
  if(target)Object.assign(target,x);else{target={id:Date.now(),...x};db.orders.push(target)}
+ const linkedCustomer=cust(x.customerId);
+ if(linkedCustomer)linkedCustomer.customerType='Existing';
  if(target.status==='Delivered'&&!target.delivered)target.delivered=new Date().toISOString().slice(0,10);
  save();closeModal();renderAll();toast('Order saved as '+target.status);
 }
@@ -813,7 +810,7 @@ function printCurrentPage(){
  window.print();
  setTimeout(()=>{document.title=oldTitle},500);
 }
-function renderAll(){
+function renderAll(){syncCustomerTypes();
  $('brand').textContent=db.settings.company||'SHREE JI CONNECT';
  $('subtitle').textContent=db.settings.subtitle||'Business CRM';
  renderDashboard();renderCustomers();renderOrders();renderProduction();renderReports();renderWhatsApp();renderTemplates();renderExhibitions();renderPrint();renderScanner();renderBackup();renderSettings();renderMenu();nav();
