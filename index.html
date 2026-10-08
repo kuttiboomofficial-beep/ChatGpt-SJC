@@ -409,7 +409,7 @@ function renderReports(){
 function applyTemplate(t,c,o,ex){
  if(!t)return '';
  let vars={name:c?.name||'',shop:c?.shop||'',order:o?.orderNo||'',weight:o?.weight||'',status:o?.status||'',city:c?.city||'',stall:ex?.stall||''};
- return t.body.replace(/\{\{(\w+)\}\}/g,(m,k)=>vars[k]??m);
+ return String(t.body||'').replace(/\\n/g,'\n').replace(/\{\{(\w+)\}\}/g,(m,k)=>vars[k]??m);
 }
 function openWA(customerId,orderId){
  if(!db.customers.length)return toast('Add a customer first');
