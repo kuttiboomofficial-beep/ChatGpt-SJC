@@ -99,6 +99,13 @@ td button{margin:2px;padding:8px 10px;font-size:13px}
 .compact-expo-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.expo-kpi{border:1px solid #ddd;text-align:left;cursor:pointer;min-height:108px;padding:14px}.expo-kpi:hover{transform:translateY(-1px)}.expo-kpi .kpi{font-size:26px;margin:5px 0}.report-head{margin-bottom:10px}.report-head h3{margin:0 0 4px}@media(max-width:800px){.compact-expo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .customer-type-badge{display:inline-block;padding:7px 10px;border-radius:999px;font-weight:800;font-size:13px;white-space:nowrap}.customer-type-badge.new{background:#fff0df;color:#b65b00}.customer-type-badge.existing{background:#e7f7ee;color:#168b58}
 
+/* Final layout fix: single company header, wrapped navigation, fitted dashboard */
+nav{display:flex;flex-wrap:wrap;white-space:normal;overflow:visible;max-width:100%;gap:8px;position:relative;top:auto;padding:8px;box-sizing:border-box}
+nav button{flex:0 1 auto;max-width:100%;padding:10px 13px;font-size:14px}
+main{width:100%;max-width:1600px;margin:0 auto;padding:clamp(10px,1.5vw,22px);box-sizing:border-box}
+#dashboard .grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:1000px){#dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){#dashboard .grid{grid-template-columns:1fr}nav button{font-size:12px;padding:8px 10px}header{padding:12px}#brand{font-size:18px}}
 /* Responsive sizing polish: keep the app and dashboard fitted to the available screen */
 html,body{width:100%;max-width:100%;overflow-x:hidden}
 main{width:100%;max-width:1600px;padding:clamp(12px,1.5vw,24px)}
@@ -260,7 +267,7 @@ function confirmationOptions(selected,allowBlank=true){
 function fmt(n){return Number(n||0).toFixed(2)}
 function badge(s){s=s||'Pending';return '<span class="status s-'+esc(s)+'">'+esc(s)+'</span>'}
 function nav(){
- const a=[['dashboard','Dashboard'],['customers','Customer CRM'],['orders','Order Management'],['production','Production'],['reports','Reports'],['whatsapp','WhatsApp'],['templates','Templates'],['exhibitions','Exhibitions'],['print','Print Center'],['scanner','Visiting Card Scanner'],['backup','Backup & Restore'],['settings','Settings'],['menu','☰ Menu']];
+ const a=[['dashboard','Dashboard'],['customers','Customer CRM'],['orders','Order Management'],['production','Production'],['reports','Reports'],['whatsapp','WhatsApp'],['templates','Templates'],['exhibitions','Exhibitions'],['print','Print Center'],['backup','Backup & Restore'],['settings','Settings'],['menu','☰ Menu']];
  $('nav').innerHTML=a.map(x=>'<button class="'+(current===x[0]?'active':'')+'" onclick="go(\''+x[0]+'\')">'+x[1]+'</button>').join('');
 }
 function go(id){current=id;document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');renderAll()}
@@ -277,7 +284,7 @@ function renderDashboard(){
  let smOrders=db.orders.filter(o=>o.type==='SM');
  let directWeight=directOrders.reduce((s,o)=>s+(+o.weight||0),0);
  let smWeight=smOrders.reduce((s,o)=>s+(+o.weight||0),0);
- $('dashboard').innerHTML='<div class="hero"><div class="big">'+esc(db.settings.company)+'</div><p>'+esc(db.settings.subtitle)+'</p></div>'+ '<h2>Dashboard</h2><div class="grid">'+ [['Total Customers',db.customers.length],['Total Orders',db.orders.length],['Direct / SM',directOrders.length+' / '+smOrders.length],['Direct Weight',fmt(directWeight)+' g'],['SM Weight',fmt(smWeight)+' g'],['Total Weight',fmt(t.weight)+' g'],['Pending',t.pending],['Started',t.started],['Finished',t.finished],['Delivered',t.delivered],['Cancelled',t.cancelled]].map(x=>'<div class="card"><div class="muted">'+x[0]+'</div><div class="kpi">'+x[1]+'</div></div>').join('')+ '</div><div class="card"><h2 style="font-size:22px">Quick Actions</h2><div class="quick"><button class="orange" onclick="openCustomer()">+ Customer</button><button class="orange" onclick="openOrder()">+ Order</button><button class="green" onclick="go(\'whatsapp\')">WhatsApp</button><button onclick="go(\'scanner\')">Scan Card</button><button onclick="go(\'reports\')">Reports</button></div></div>';
+ $('dashboard').innerHTML='<h2>Dashboard</h2><div class="grid">'+ [['Total Customers',db.customers.length],['Total Orders',db.orders.length],['Direct / SM',directOrders.length+' / '+smOrders.length],['Direct Weight',fmt(directWeight)+' g'],['SM Weight',fmt(smWeight)+' g'],['Total Weight',fmt(t.weight)+' g'],['Pending',t.pending],['Started',t.started],['Finished',t.finished],['Delivered',t.delivered],['Cancelled',t.cancelled]].map(x=>'<div class="card"><div class="muted">'+x[0]+'</div><div class="kpi">'+x[1]+'</div></div>').join('')+ '</div><div class="card"><h2 style="font-size:22px">Quick Actions</h2><div class="quick"><button class="orange" onclick="openCustomer()">+ Customer</button><button class="orange" onclick="openOrder()">+ Order</button><button class="green" onclick="go(\'whatsapp\')">WhatsApp</button><button onclick="go(\'reports\')">Reports</button></div></div>';
 }
 function recentOrders(){
  let a=db.orders.slice().reverse().slice(0,8);
@@ -888,7 +895,7 @@ function saveSettings(){
  db.settings.company=$('setCompany').value.trim();db.settings.subtitle=$('setSubtitle').value.trim();db.settings.phone=$('setPhone').value.trim();db.settings.country=$('setCountry').value.replace(/\D/g,'')||'91';db.settings.address=$('setAddress').value.trim();db.settings.defaultType=$('setType').value;db.settings.defaultStatus=$('setStatus').value;db.settings.staff=String($('setStaff')?.value||'').split(',').map(x=>x.trim()).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i);db.settings.confirmationPersons=String($('setConfirmPersons')?.value||'').split(',').map(x=>x.trim()).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i);db.settings.security={...defaults.settings.security,...(db.settings.security||{}),autoLockMinutes:Number($('setAutoLock')?.value)||10};save();renderAll();startSecurityTimer();toast('Settings saved');
 }
 function renderMenu(){
- $('menu').innerHTML='<h2>Menu</h2><div class="tiles">'+[['dashboard','Dashboard'],['customers','Customer CRM'],['orders','Order Management'],['production','Production'],['reports','Database Reports'],['whatsapp','WhatsApp Center'],['templates','Message Templates'],['exhibitions','Exhibitions'],['print','Print Center'],['scanner','Visiting Card Scanner'],['backup','Backup & Restore'],['settings','Settings']].map(x=>'<div class="tile"><h3>'+x[1]+'</h3><button class="orange" onclick="go(\''+x[0]+'\')">Open</button></div>').join('')+'</div>';
+ $('menu').innerHTML='<h2>Menu</h2><div class="tiles">'+[['dashboard','Dashboard'],['customers','Customer CRM'],['orders','Order Management'],['production','Production'],['reports','Database Reports'],['whatsapp','WhatsApp Center'],['templates','Message Templates'],['exhibitions','Exhibitions'],['print','Print Center'],['backup','Backup & Restore'],['settings','Settings']].map(x=>'<div class="tile"><h3>'+x[1]+'</h3><button class="orange" onclick="go(\''+x[0]+'\')">Open</button></div>').join('')+'</div>';
 }
 let deferredInstall=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
