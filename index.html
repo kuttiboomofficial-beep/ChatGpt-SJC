@@ -157,10 +157,10 @@ nav#nav button{width:100%;min-width:0;max-width:100%;padding:10px 8px;font-size:
 <section id="templates"></section>
 <section id="exhibitions"></section>
 <section id="print"></section>
-<section id="scanner"></section>
+
 <section id="backup"></section>
 <section id="settings"></section>
-<section id="menu"></section>
+
 </main>
 <div id="modalbg" class="modalbg"><div id="modal" class="modal"></div></div>
 <div id="toast" class="toast"></div><div id="securityOverlay" class="security-overlay" aria-modal="true" role="dialog"></div>
@@ -903,59 +903,6 @@ function exportCSV(a=db.orders){
  let csv=r.map(row=>row.map(x=>'"'+String(x??'').replaceAll('"','""')+'"').join(',')).join('\n');
  let aEl=document.createElement('a');aEl.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));aEl.download='shree-ji-database-report.csv';aEl.click();toast('CSV exported');
 }
-function renderScanner(){
- $('scanner').innerHTML='<h2>Visiting Card Scanner</h2><div class="card"><p class="muted">📷 Take a clear card photo → enhance → OCR → review → save. Phone, city and state are detected automatically when possible.</p><div class="formgrid"><div><label>Camera / Upload Image</label><input id="cardFile" type="file" accept="image/*" capture="environment" onchange="previewCard(event)"><img id="cardImg" class="preview" style="display:none;margin-top:10px"><canvas id="ocrCanvas" style="display:none"></canvas></div><div><label>Jewellery Name</label><input id="snshop" placeholder="Review / edit after scan"><label>Contact Person *</label><input id="sn" placeholder="Review / edit after scan"><label>Mobile *</label><input id="sm" inputmode="numeric" placeholder="10 digit mobile"><label>Alternate Mobile</label><input id="sa" inputmode="numeric"><label>City</label><div class="city-field"><input id="sc" autocomplete="off" placeholder="Type/select city" oninput="scannerCityState()" onfocus="renderScannerCitySuggestions()"><div id="scannerCitySuggestions" class="city-suggestions"></div></div><label>State</label><input id="ssc" readonly placeholder="Auto-filled from city"></div><div class="full"><label>Full Address</label><textarea id="saddr" rows="4" placeholder="Review / edit address"></textarea></div><div class="full"><label>Detected Text</label><textarea id="ocrText" rows="7" readonly></textarea><div id="ocrStatus" class="muted">Choose a card photo to begin.</div></div></div><div class="actions"><button class="orange" id="scanBtn" onclick="scanCard()" disabled>🔍 Scan Card</button><button class="light" onclick="clearScan()">Clear</button><button class="green" onclick="saveScan()">Save as Customer</button></div></div>';
-}
-function previewCard(e){
- scanFile=e.target.files[0]||null;if(!scanFile)return;
- const r=new FileReader();r.onload=()=>{$('cardImg').src=r.result;$('cardImg').style.display='block';$('scanBtn').disabled=false;$('ocrStatus').textContent='Photo ready. Tap Scan Card.'};r.readAsDataURL(scanFile);
-}
-function preprocessCard(file){
- return new Promise((resolve,reject)=>{
-  const img=new Image();
-  img.onload=()=>{
-   const maxW=2200,maxH=1600,scale=Math.min(1,maxW/img.naturalWidth,maxH/img.naturalHeight);
-   const c=$('ocrCanvas');c.width=Math.max(900,Math.round(img.naturalWidth*scale));c.height=Math.max(600,Math.round(img.naturalHeight*scale));
-   const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0,c.width,c.height);
-   const im=ctx.getImageData(0,0,c.width,c.height),d=im.data;
-   for(let i=0;i<d.length;i+=4){const lum=.299*d[i]+.587*d[i+1]+.114*d[i+2];let v=(lum-128)*1.45+128;v=Math.max(0,Math.min(255,v));d[i]=d[i+1]=d[i+2]=v;}
-   ctx.putImageData(im,0,0);resolve(c.toDataURL('image/png'));
-  };img.onerror=reject;img.src=URL.createObjectURL(file);
- });
-}
-function normalizeOcrLine(x){return String(x||'').replace(/[|~`^]+/g,' ').replace(/\s+/g,' ').trim();}
-function goodOcrLine(x){const s=normalizeOcrLine(x);if(s.length<3||s.length>90)return false;if(/^[-_=.,:;\/\\]+$/.test(s))return false;const letters=(s.match(/[A-Za-z]/g)||[]).length,digits=(s.match(/\d/g)||[]).length;if(letters<3||digits>letters*1.4)return false;return true;}
-function extractPhones(text){const raw=String(text||'').replace(/[^\d+\-\s]/g,' '),found=[];for(const m of raw.matchAll(/(?:\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}/g)){const n=m[0].replace(/\D/g,'').slice(-10);if(n.length===10&&!found.includes(n))found.push(n);}return found;}
-function extractCity(text){const low=String(text||'').toLowerCase();return CITY_NAMES.find(c=>low.includes(c.toLowerCase()))||'';}
-function extractEmail(text){const m=String(text||'').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);return m?m[0]:'';}
-function scoreNameLine(s){let score=0,x=s.toLowerCase();if(/^(mr|mrs|ms|dr)\.?\s/.test(x))score+=3;if(/manager|director|owner|proprietor|partner|contact|mobile|phone|email|www|\.com|road|street|address|india|tamil|nadu|karnataka|kerala|telangana|maharashtra|jewell|gold|llp|pvt|ltd/.test(x))score-=4;if(/[0-9@]/.test(x))score-=3;const letters=(s.match(/[A-Za-z]/g)||[]).length;score+=Math.min(5,letters/6);if(s.split(' ').length>=2)score+=2;return score;}
-function pickPersonAndShop(lines){const candidates=lines.filter(goodOcrLine).map((s,i)=>({s,i,score:scoreNameLine(s)})).sort((a,b)=>b.score-a.score);const person=candidates.find(x=>x.score>=2.5)?.s||'';const shop=candidates.find(x=>x.s!==person&&x.score>=1.5)?.s||'';return {person,shop};}
-function scannerCityState(){const city=$('sc'),state=$('ssc');if(!city||!state)return;state.value=cityState(city.value)||'';renderScannerCitySuggestions();}
-function renderScannerCitySuggestions(){
- const city=$('sc'),box=$('scannerCitySuggestions');if(!city||!box)return;
- const matches=cityMatches(city.value);if(!matches.length){box.innerHTML='';box.style.display='none';return;}
- box.innerHTML=matches.map(c=>'<button type="button" class="city-option" data-city="'+esc(c)+'"><b>'+esc(c)+'</b><span>'+esc(CITY_STATE[c])+'</span></button>').join('');
- box.querySelectorAll('[data-city]').forEach(btn=>btn.addEventListener('click',()=>chooseScannerCity(btn.dataset.city)));
- box.style.display='block';
-}
-function chooseScannerCity(name){$('sc').value=name;$('ssc').value=CITY_STATE[name]||'';const b=$('scannerCitySuggestions');if(b){b.innerHTML='';b.style.display='none';}}
-async function scanCard(){
- if(!scanFile)return;if(!window.Tesseract)return toast('Offline OCR is not bundled in this version. Use manual entry for the visiting card.');
- $('scanBtn').disabled=true;$('ocrStatus').textContent='Preparing image...';
- try{
-  const processed=await preprocessCard(scanFile);$('ocrStatus').textContent='Scanning enhanced card...';
-  const r=await Tesseract.recognize(processed,'eng',{logger:m=>{if(m.status==='recognizing text')$('ocrStatus').textContent='Scanning '+Math.round((m.progress||0)*100)+'%'}});
-  const text=r?.data?.text||'';$('ocrText').value=text;const lines=text.split(/\n/).map(normalizeOcrLine).filter(Boolean);
-  const phones=extractPhones(text);$('sm').value=phones[0]||'';$('sa').value=phones[1]||'';
-  const city=extractCity(text);if(city){$('sc').value=city;$('ssc').value=CITY_STATE[city]||'';}
-  const {person,shop}=pickPersonAndShop(lines);$('sn').value=person;$('snshop').value=shop;
-  const email=extractEmail(text),used=new Set([person,shop,city,...phones].filter(Boolean).map(normalizeOcrLine));
-  $('saddr').value=lines.filter(x=>!used.has(x)&&!/phone|mobile|email|www|director|manager|owner|proprietor/i.test(x)).slice(0,5).join(', ');
-  const conf=Number(r?.data?.confidence||0);$('ocrStatus').textContent=(conf?('OCR complete • confidence '+Math.round(conf)+'%. '):'OCR complete. ')+'Review every field before saving.'+(email?' Email detected: '+email:'');
- }catch(e){console.error(e);$('ocrStatus').textContent='OCR failed. Try a clearer, well-lit photo with the whole card visible.'}finally{$('scanBtn').disabled=false;}
-}
-function clearScan(){scanFile=null;if($('cardFile'))$('cardFile').value='';['snshop','sn','sm','sa','sc','ssc','saddr','ocrText'].forEach(id=>{if($(id))$(id).value=''});if($('cardImg')){$('cardImg').style.display='none';$('cardImg').removeAttribute('src')}if($('scanBtn'))$('scanBtn').disabled=true;if($('ocrStatus'))$('ocrStatus').textContent='Choose a card photo to begin.';const b=$('scannerCitySuggestions');if(b){b.innerHTML='';b.style.display='none';}}
-function saveScan(){const name=formatPersonName($('sn').value),mobile=$('sm').value.replace(/\D/g,'').slice(-10),city=$('sc').value.trim();if(!name||mobile.length!==10)return toast('Review Customer Name and 10-digit Mobile');db.customers.push({id:Date.now(),name,shop:formatJewelleryName($('snshop').value),contactPerson:'',mobile,alt:$('sa').value.replace(/\D/g,'').slice(-10),city,address:$('saddr').value.trim(),state:cityState(city)||$('ssc').value.trim(),exhibition:'',notes:'From visiting card scanner',dateAdded:new Date().toISOString().slice(0,10)});save();toast('Customer saved');clearScan();go('customers');}
 function bytesToB64(bytes){let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));return btoa(bin)}
 function b64ToBytes(s){let bin=atob(s),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return a}
 async function deriveBackupKey(pin,salt){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:120000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
@@ -994,9 +941,6 @@ function changeSecurityPin(){
 function saveSettings(){
  db.settings.company=$('setCompany').value.trim();db.settings.subtitle=$('setSubtitle').value.trim();db.settings.phone=$('setPhone').value.trim();db.settings.country=$('setCountry').value.replace(/\D/g,'')||'91';db.settings.address=$('setAddress').value.trim();db.settings.defaultType=$('setType').value;db.settings.defaultStatus=$('setStatus').value;db.settings.staff=String($('setStaff')?.value||'').split(',').map(x=>x.trim()).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i);db.settings.confirmationPersons=String($('setConfirmPersons')?.value||'').split(',').map(x=>x.trim()).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i);db.settings.security={...defaults.settings.security,...(db.settings.security||{}),autoLockMinutes:Number($('setAutoLock')?.value)||10};save();renderAll();startSecurityTimer();toast('Settings saved');
 }
-function renderMenu(){
- $('menu').innerHTML='<h2>Menu</h2><div class="tiles">'+[['dashboard','Dashboard'],['customers','Customer CRM'],['orders','Order Management'],['production','Production'],['reports','Database Reports'],['whatsapp','WhatsApp Center'],['templates','Message Templates'],['exhibitions','Exhibitions'],['print','Print Center'],['backup','Backup & Restore'],['settings','Settings']].map(x=>'<div class="tile"><h3>'+x[1]+'</h3><button class="orange" onclick="go(\''+x[0]+'\')">Open</button></div>').join('')+'</div>';
-}
 let deferredInstall=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 async function installApp(){if(deferredInstall){deferredInstall.prompt();deferredInstall=null;}else{toast('Chrome menu → Add to Home screen / Install app');}}
@@ -1025,7 +969,7 @@ function printCurrentPage(){
 function renderAll(){syncCustomerTypes();
  $('brand').textContent=db.settings.company||'SHREE JI CONNECT';
  $('subtitle').textContent=db.settings.subtitle||'Business CRM';
- renderDashboard();renderCustomers();renderOrders();renderProduction();renderReports();renderWhatsApp();renderTemplates();renderExhibitions();renderPrint();renderScanner();renderBackup();renderSettings();renderMenu();nav();
+ renderDashboard();renderCustomers();renderOrders();renderProduction();renderReports();renderWhatsApp();renderTemplates();renderExhibitions();renderPrint();renderBackup();renderSettings();nav();
 }
 go('dashboard');
 if(securityEnabled()){securityUnlocked=false;showSecurityScreen('unlock')}else{securityUnlocked=false;showSecurityScreen('setup')}
