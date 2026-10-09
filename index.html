@@ -126,6 +126,22 @@ nav#nav button{width:100%;min-width:0;max-width:100%;padding:10px 8px;font-size:
 #dashboard .grid>*{min-width:0;}
 @media(max-width:850px){nav#nav{grid-template-columns:repeat(3,minmax(0,1fr));}#dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:520px){nav#nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:7px;}nav#nav button{font-size:11px;padding:8px 5px;}#dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* Exhibition-aware production workspace */
+.expo-production-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 18px}
+.expo-production-card{background:#fff;border:1px solid #ddd;border-radius:15px;padding:15px;min-width:0}
+.expo-production-card h3{margin:0 0 6px;font-size:16px;overflow-wrap:anywhere}
+.expo-production-card .expo-meta{font-size:12px;color:#777;line-height:1.45;margin-bottom:10px}
+.expo-production-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.expo-production-stats div{background:#f6f7f9;border-radius:9px;padding:8px;min-width:0}
+.expo-production-stats b{display:block;font-size:17px;overflow-wrap:anywhere}
+.expo-production-stats span{font-size:11px;color:#666}
+.expo-production-card button{width:100%;margin-top:5px}
+.production-filter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #ddd;border-radius:12px;padding:12px;margin:12px 0}
+.production-filter select{max-width:340px}
+@media(max-width:950px){.expo-production-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.expo-production-grid{grid-template-columns:1fr}.production-filter select{max-width:none;flex:1;width:100%}}
+
 </style>
 </head>
 <body>
@@ -542,14 +558,23 @@ function showPreviousOrdersYear(year){
  const rows=a.length?a.map(o=>'<tr><td>'+esc(o.orderNo)+'</td><td>'+esc(o.orderDate||'-')+'</td><td>'+esc(cust(o.customerId).name)+'</td><td>'+fmt(o.weight)+'g</td><td>'+esc(o.touch||'-')+'</td><td>'+esc(o.startDate||'-')+'</td><td>'+badge(o.status)+'</td><td><button class="light" onclick="openOrder('+o.id+')">Open</button></td></tr>').join(''):'<tr><td colspan="8" class="empty">No orders</td></tr>';
  modal('Previous Orders - '+year,'<div class="actions"><button onclick="openPreviousOrders()">← Back to Years</button></div><div class="card tablewrap"><table><tr><th>Order</th><th>Date</th><th>Customer</th><th>Weight</th><th>Touch</th><th>Start</th><th>Status</th><th>Action</th></tr>'+rows+'</table></div>');
 }
+let productionExpoFilter='all';
+function selectProductionExpo(id){productionExpoFilter=String(id);renderProduction();}
+function productionOrdersForYear(){
+ const cy=new Date().getFullYear();
+ return db.orders.filter(o=>orderYear(o)===cy&&(productionExpoFilter==='all'||String(o.exhibitionId||'')===productionExpoFilter));
+}
 function productionBlock(type){
  const cy=new Date().getFullYear();
- let a=db.orders.filter(o=>o.type===type&&orderYear(o)===cy),weight=a.reduce((s,o)=>s+(+o.weight||0),0);
- return '<div class="card"><h3>'+type+' Production — '+cy+'</h3><div class="grid">'+STATUS.map(s=>'<div class="tile"><div class="muted">'+s+'</div><div class="kpi">'+a.filter(o=>o.status===s).length+'</div></div>').join('')+'</div><p class="muted">Current year total weight: '+fmt(weight)+'g</p><div class="tablewrap"><table><tr><th>Order</th><th>Customer</th><th>Weight</th><th>Touch</th><th>Start</th><th>Status</th></tr>'+(a.length?a.slice().reverse().map(o=>'<tr><td>'+esc(o.orderNo)+'</td><td>'+esc(cust(o.customerId).name)+'</td><td>'+fmt(o.weight)+'g</td><td>'+esc(o.touch)+'</td><td>'+esc(o.startDate||'-')+'</td><td><select onchange="setStatus('+o.id+',this.value)">'+STATUS.map(s=>'<option value="'+s+'" '+(o.status===s?'selected':'')+'>'+s+'</option>').join('')+'</select></td></tr>').join(''):'<tr><td colspan="6" class="empty">No '+type+' orders in '+cy+'</td></tr>')+'</table></div></div>';
+ let a=productionOrdersForYear().filter(o=>o.type===type),weight=a.reduce((s,o)=>s+(+o.weight||0),0);
+ return '<div class="card"><h3>'+type+' Production — '+cy+'</h3><div class="grid">'+STATUS.map(s=>'<div class="tile"><div class="muted">'+s+'</div><div class="kpi">'+a.filter(o=>o.status===s).length+'</div></div>').join('')+'</div><p class="muted">'+(productionExpoFilter==='all'?'All exhibitions and non-exhibition orders':'Selected exhibition only')+' · Total weight: '+fmt(weight)+' g</p><div class="tablewrap"><table><tr><th>Order</th><th>Exhibition</th><th>Customer</th><th>Weight</th><th>Touch</th><th>Start</th><th>Status</th></tr>'+(a.length?a.slice().reverse().map(o=>{let ex=db.exhibitions.find(e=>String(e.id)===String(o.exhibitionId));return '<tr><td>'+esc(o.orderNo)+'</td><td>'+esc(ex?.name||'Direct / No exhibition')+'</td><td>'+esc(cust(o.customerId).name)+'</td><td>'+fmt(o.weight)+'g</td><td>'+esc(o.touch)+'</td><td>'+esc(o.startDate||'-')+'</td><td><select onchange="setStatus('+o.id+',this.value)">'+STATUS.map(s=>'<option value="'+s+'" '+(o.status===s?'selected':'')+'>'+s+'</option>').join('')+'</select></td></tr>'}).join(''):'<tr><td colspan="7" class="empty">No '+type+' orders '+(productionExpoFilter==='all'?'in '+cy:'for this exhibition in '+cy)+'</td></tr>')+'</table></div></div>';
 }
 function renderProduction(){
- const cy=new Date().getFullYear(), prev=previousOrderYears(), prevCount=db.orders.filter(o=>{const y=orderYear(o);return y&&y<cy}).length;
- $('production').innerHTML='<h2>Production — '+cy+'</h2><div class="actions no-print"><button onclick="printProduction(\'Direct\')">🖨️ Print Direct Production</button><button onclick="printProduction(\'SM\')">🖨️ Print SM Production</button><button class="orange" onclick="printProduction(\'ALL\')">🖨️ Print All Production</button><button class="light" onclick="openPreviousOrders()">📁 Previous Orders ('+prevCount+')</button></div><p class="muted">Only '+cy+' orders are shown here. Previous years are stored separately and can be opened from <b>Previous Orders</b>.</p>'+productionBlock('Direct')+productionBlock('SM');
+ const cy=new Date().getFullYear(),prevCount=db.orders.filter(o=>{const y=orderYear(o);return y&&y<cy}).length;
+ const yearExhibitions=db.exhibitions.filter(e=>{const d=String(e.start||'');return !d||Number(d.slice(0,4))===cy||Number(String(e.end||'').slice(0,4))===cy}).sort((a,b)=>String(a.start||'').localeCompare(String(b.start||'')));
+ const expoCards=yearExhibitions.map(e=>{const a=db.orders.filter(o=>String(o.exhibitionId)===String(e.id)&&orderYear(o)===cy),customers=new Set(a.map(o=>String(o.customerId))).size,weight=a.reduce((sum,o)=>sum+(+o.weight||0),0),active=productionExpoFilter===String(e.id);return '<div class="expo-production-card" style="'+(active?'border:2px solid #f47b00':'')+'"><h3>'+esc(e.name)+'</h3><div class="expo-meta">'+esc(e.location||'Location not set')+'<br>'+esc(e.start||'-')+' → '+esc(e.end||'-')+'</div><div class="expo-production-stats"><div><b>'+a.length+'</b><span>Orders</span></div><div><b>'+customers+'</b><span>Customers</span></div><div><b>'+fmt(weight)+'</b><span>Weight (g)</span></div></div><button class="'+(active?'orange':'light')+'" onclick="selectProductionExpo('+e.id+')">'+(active?'Viewing Production':'View Production')+'</button></div>'}).join('');
+ const totalThisYear=db.orders.filter(o=>orderYear(o)===cy).length;
+ $('production').innerHTML='<h2>Production — '+cy+'</h2><div class="actions no-print"><button onclick="printProduction(\'Direct\')">🖨️ Print Direct Production</button><button onclick="printProduction(\'SM\')">🖨️ Print SM Production</button><button class="orange" onclick="printProduction(\'ALL\')">🖨️ Print All Production</button><button class="light" onclick="openPreviousOrders()">📁 Previous Orders ('+prevCount+')</button><button class="orange" onclick="go(\'exhibitions\')">＋ Manage Exhibitions</button></div><div class="card"><h3>📅 '+cy+' Exhibition Overview</h3><p class="muted">Manage your 4–5 exhibitions throughout the year. Each exhibition has its own order count, customer count, total weight and production view.</p><div class="expo-production-grid">'+(expoCards||'<div class="empty">No exhibitions added for '+cy+'. Use “Manage Exhibitions” to add your first exhibition.</div>')+'</div></div><div class="production-filter no-print"><b>Production view:</b><select onchange="selectProductionExpo(this.value)"><option value="all" '+(productionExpoFilter==='all'?'selected':'')+'>All Exhibitions + Direct Orders ('+totalThisYear+')</option>'+yearExhibitions.map(e=>'<option value="'+e.id+'" '+(productionExpoFilter===String(e.id)?'selected':'')+'>'+esc(e.name)+'</option>').join('')+'</select><button class="light" onclick="selectProductionExpo(\'all\')">Show All</button></div><p class="muted">Only '+cy+' orders are shown here. Older years remain under Previous Orders.</p>'+productionBlock('Direct')+productionBlock('SM');
 }
 function reportData(){
  let q=($('rq')?.value||'').toLowerCase(),type=$('rt')?.value||'',statusF=$('rs')?.value||'',from=$('rf')?.value||'',to=$('rto')?.value||'';
