@@ -118,6 +118,14 @@ main{width:100%;max-width:1500px;margin:0 auto;padding:clamp(12px,1.4vw,20px)}
 @media(max-width:1150px){#dashboard .grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:850px){main{padding:12px}#dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.quick{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){header{padding:12px}#brand{font-size:18px}#subtitle{font-size:11px}nav{gap:5px;padding:7px}nav button{flex:1 1 auto;font-size:11px;padding:8px 7px}main{padding:9px}#dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}#dashboard .grid .card{padding:10px}#dashboard .grid .kpi{font-size:21px}.tiles{grid-template-columns:1fr 1fr}}
+
+/* Screen-fit navigation and dashboard cards */
+nav#nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr));gap:7px;width:100%;max-width:100%;padding:8px clamp(8px,1.2vw,16px);overflow:visible;white-space:normal;}
+nav#nav button{width:100%;min-width:0;max-width:100%;padding:10px 8px;font-size:clamp(11px,.85vw,14px);line-height:1.2;text-align:center;white-space:normal;overflow-wrap:anywhere;}
+#dashboard .grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+#dashboard .grid>*{min-width:0;}
+@media(max-width:850px){nav#nav{grid-template-columns:repeat(3,minmax(0,1fr));}#dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:520px){nav#nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:7px;}nav#nav button{font-size:11px;padding:8px 5px;}#dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 </style>
 </head>
 <body>
