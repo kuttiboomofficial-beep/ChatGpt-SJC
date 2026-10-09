@@ -99,27 +99,25 @@ td button{margin:2px;padding:8px 10px;font-size:13px}
 .compact-expo-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.expo-kpi{border:1px solid #ddd;text-align:left;cursor:pointer;min-height:108px;padding:14px}.expo-kpi:hover{transform:translateY(-1px)}.expo-kpi .kpi{font-size:26px;margin:5px 0}.report-head{margin-bottom:10px}.report-head h3{margin:0 0 4px}@media(max-width:800px){.compact-expo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .customer-type-badge{display:inline-block;padding:7px 10px;border-radius:999px;font-weight:800;font-size:13px;white-space:nowrap}.customer-type-badge.new{background:#fff0df;color:#b65b00}.customer-type-badge.existing{background:#e7f7ee;color:#168b58}
 
-/* Final layout fix: single company header, wrapped navigation, fitted dashboard */
-nav{display:flex;flex-wrap:wrap;white-space:normal;overflow:visible;max-width:100%;gap:8px;position:relative;top:auto;padding:8px;box-sizing:border-box}
-nav button{flex:0 1 auto;max-width:100%;padding:10px 13px;font-size:14px}
-main{width:100%;max-width:1600px;margin:0 auto;padding:clamp(10px,1.5vw,22px);box-sizing:border-box}
-#dashboard .grid{grid-template-columns:repeat(4,minmax(0,1fr))}
-@media(max-width:1000px){#dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){#dashboard .grid{grid-template-columns:1fr}nav button{font-size:12px;padding:8px 10px}header{padding:12px}#brand{font-size:18px}}
-/* Responsive sizing polish: keep the app and dashboard fitted to the available screen */
+/* Final compact desktop dashboard and simple navigation */
 html,body{width:100%;max-width:100%;overflow-x:hidden}
-main{width:100%;max-width:1600px;padding:clamp(12px,1.5vw,24px)}
-.hero{padding:clamp(18px,2vw,28px);margin-bottom:16px}
-.grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(10px,1vw,16px)}
-.grid .card{min-width:0;margin:0;padding:clamp(12px,1.2vw,18px);overflow-wrap:anywhere}
-.grid .muted{font-size:clamp(12px,.9vw,14px);line-height:1.35}
-.grid .kpi{font-size:clamp(22px,2vw,30px);line-height:1.2;overflow-wrap:anywhere}
-.quick{grid-template-columns:repeat(5,minmax(0,1fr))}
-.quick button{min-width:0;padding:11px 10px;white-space:normal}
-@media(max-width:1200px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.quick{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:850px){main{padding:12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.hero .big{font-size:20px}}
-@media(max-width:480px){.grid,.tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.grid .card{padding:10px;border-radius:12px}.grid .kpi{font-size:21px}.grid .muted{font-size:11px}.quick{grid-template-columns:repeat(2,minmax(0,1fr))}header{padding:14px}#brand{font-size:18px}h2{font-size:23px}}
-
+header{padding:14px clamp(14px,2vw,26px)}
+#brand{font-size:clamp(18px,1.6vw,24px);line-height:1.2}
+#subtitle{font-size:clamp(12px,1vw,15px);line-height:1.35}
+nav{display:flex;flex-wrap:wrap;align-items:center;gap:7px;white-space:normal;overflow:visible;position:sticky;top:0;padding:8px 12px;max-width:100%;width:100%;box-sizing:border-box}
+nav button{flex:0 1 auto;min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;padding:9px 11px;font-size:clamp(11px,.9vw,14px)}
+main{width:100%;max-width:1500px;margin:0 auto;padding:clamp(12px,1.4vw,20px)}
+#dashboard>h2{font-size:clamp(23px,2vw,29px);margin:5px 0 14px}
+#dashboard .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(8px,1vw,13px);width:100%}
+#dashboard .grid .card{min-width:0;margin:0;padding:clamp(11px,1vw,16px);border-radius:14px;overflow-wrap:anywhere}
+#dashboard .grid .muted{font-size:clamp(11px,.9vw,14px);line-height:1.35}
+#dashboard .grid .kpi{font-size:clamp(21px,1.8vw,28px);line-height:1.15;margin-top:7px;overflow-wrap:anywhere}
+#dashboard>.card{margin-top:14px}
+.quick{grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.quick button{min-width:0;white-space:normal;padding:10px}
+@media(max-width:1150px){#dashboard .grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:850px){main{padding:12px}#dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.quick{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){header{padding:12px}#brand{font-size:18px}#subtitle{font-size:11px}nav{gap:5px;padding:7px}nav button{flex:1 1 auto;font-size:11px;padding:8px 7px}main{padding:9px}#dashboard .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}#dashboard .grid .card{padding:10px}#dashboard .grid .kpi{font-size:21px}.tiles{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -267,7 +265,8 @@ function confirmationOptions(selected,allowBlank=true){
 function fmt(n){return Number(n||0).toFixed(2)}
 function badge(s){s=s||'Pending';return '<span class="status s-'+esc(s)+'">'+esc(s)+'</span>'}
 function nav(){
- const a=[['dashboard','Dashboard'],['customers','Customer CRM'],['orders','Order Management'],['production','Production'],['reports','Reports'],['whatsapp','WhatsApp'],['templates','Templates'],['exhibitions','Exhibitions'],['print','Print Center'],['backup','Backup & Restore'],['settings','Settings'],['menu','☰ Menu']];
+ // Show all useful destinations directly in the main navigation; no separate Menu tab.
+ const a=[['dashboard','Dashboard'],['customers','Customer CRM'],['orders','Order Management'],['production','Production'],['reports','Reports'],['whatsapp','WhatsApp'],['templates','Templates'],['exhibitions','Exhibitions'],['print','Print Center'],['backup','Backup & Restore'],['settings','Settings']];
  $('nav').innerHTML=a.map(x=>'<button class="'+(current===x[0]?'active':'')+'" onclick="go(\''+x[0]+'\')">'+x[1]+'</button>').join('');
 }
 function go(id){current=id;document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');renderAll()}
