@@ -27,7 +27,7 @@ h2{font-size:30px;margin:8px 0 20px}h3{margin-top:4px}
 .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .tile{background:#fff;border:1px solid #ddd;border-radius:16px;padding:16px}
 .kpi{font-size:30px;font-weight:800;margin-top:8px}.muted{color:#777;font-size:14px}
-.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.full{grid-column:1/-1}
+.formgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}.formgrid .jewellery-field{grid-column:span 2}.full{grid-column:1/-1}
 label{display:block;font-size:14px;font-weight:700;margin:6px 0}
 input,select,textarea{width:100%;padding:12px;border:1px solid #d2d2d2;border-radius:10px;background:#fff}
 textarea{resize:vertical}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
@@ -44,7 +44,7 @@ td button{margin:2px;padding:8px 10px;font-size:13px}
 .quick{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
 .empty{padding:25px;text-align:center;color:#777}
 .modalbg{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:12px;z-index:50}
-.modalbg.show{display:flex}.modal{width:min(950px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;padding:20px}
+.modalbg.show{display:flex}.modal{width:min(1240px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;padding:24px}.modal h2{font-size:28px;margin:0 0 18px}.formgrid label{font-size:13px;font-weight:750;margin:3px 0 7px}.formgrid input,.formgrid select,.formgrid textarea{min-width:0;box-sizing:border-box;padding:11px 12px}.formgrid .jewellery-field select{font-weight:600}.form-actions{display:flex;gap:12px;margin-top:18px}.form-actions button{flex:1;min-height:48px;font-weight:800}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:12px 18px;border-radius:24px;display:none;z-index:100}
 .preview{max-width:100%;max-height:220px;border-radius:12px;border:1px solid #ddd}
 .small{font-size:12px}.danger-note{background:#fff3cd;border-radius:10px;padding:10px;color:#856404}
@@ -142,6 +142,7 @@ nav#nav button{width:100%;min-width:0;max-width:100%;padding:10px 8px;font-size:
 @media(max-width:950px){.expo-production-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.expo-production-grid{grid-template-columns:1fr}.production-filter select{max-width:none;flex:1;width:100%}}
 
+@media(max-width:900px){.formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.formgrid .jewellery-field{grid-column:span 2}}@media(max-width:560px){.formgrid{grid-template-columns:minmax(0,1fr);gap:10px}.formgrid .jewellery-field,.full{grid-column:1}.modal{padding:16px}.form-actions{flex-direction:column}.form-actions button{width:100%}}
 </style>
 </head>
 <body>
@@ -302,31 +303,18 @@ function totals(){
  return z;
 }
 function renderDashboard(){
- const cy=new Date().getFullYear();
+ let t=totals();
  const todayStr=new Date().toISOString().slice(0,10);
- // Dashboard focuses on the current exhibition; if none is active today, use the most recently started exhibition.
- const currentExhibitions=(db.exhibitions||[]).filter(e=>{
-   const s=String(e.start||''), en=String(e.end||e.start||'');
-   return s && s<=todayStr && en>=todayStr;
- }).sort((a,b)=>String(b.start||'').localeCompare(String(a.start||'')));
- const latestExhibition=(db.exhibitions||[]).filter(e=>e.start).slice().sort((a,b)=>String(b.start||'').localeCompare(String(a.start||'')))[0];
- const currentExhibition=currentExhibitions[0]||latestExhibition||null;
- const scopedOrders=currentExhibition
-   ? db.orders.filter(o=>String(o.exhibitionId||'')===String(currentExhibition.id))
-   : db.orders.filter(o=>orderYear(o)===cy);
- const tScoped={weight:scopedOrders.reduce((s,o)=>s+(Number(o.weight)||0),0)};
- const countStatus=s=>scopedOrders.filter(o=>o.status===s).length;
- const activeOrders=scopedOrders.filter(o=>!['Delivered','Cancelled'].includes(o.status));
+ const activeOrders=db.orders.filter(o=>!['Delivered','Cancelled'].includes(o.status));
  const overdueOrders=activeOrders.filter(o=>o.customerDueDate&&o.customerDueDate<todayStr);
  const notStartedOrders=activeOrders.filter(o=>o.status==='Pending'&&!o.startDate);
- const deliveryPendingOrders=scopedOrders.filter(o=>o.status==='Finished'&&!o.delivered);
- const alertCard='<div class="card section"><h2 style="font-size:20px">Current Exhibition Alerts & Tracking</h2><div class="grid"><div class="card"><div class="muted">Overdue Orders</div><div class="kpi">'+overdueOrders.length+'</div></div><div class="card"><div class="muted">Production Not Started</div><div class="kpi">'+notStartedOrders.length+'</div></div><div class="card"><div class="muted">Delivery Pending</div><div class="kpi">'+deliveryPendingOrders.length+'</div></div></div>'+(overdueOrders.length?'<p><b>Overdue:</b> '+overdueOrders.map(o=>esc(o.orderNo)+' (due '+esc(o.customerDueDate)+')').join(', ')+'</p>':'')+(notStartedOrders.length?'<p><b>Production not started:</b> '+notStartedOrders.map(o=>esc(o.orderNo)).join(', ')+'</p>':'')+(deliveryPendingOrders.length?'<p><b>Delivery pending:</b> '+deliveryPendingOrders.map(o=>esc(o.orderNo)).join(', ')+'</p>':'')+'</div>';
- const directOrders=scopedOrders.filter(o=>o.type==='Direct');
- const smOrders=scopedOrders.filter(o=>o.type==='SM');
- const directWeight=directOrders.reduce((s,o)=>s+(Number(o.weight)||0),0);
- const smWeight=smOrders.reduce((s,o)=>s+(Number(o.weight)||0),0);
- const title=currentExhibition?('Current Exhibition — '+(currentExhibition.name||'Exhibition')):('Current Year Orders — '+cy);
- $('dashboard').innerHTML='<h2>Dashboard</h2><div class="card" style="margin-bottom:14px;padding:12px 16px"><h3 style="margin:0 0 4px">'+esc(title)+'</h3><div class="muted">'+(currentExhibition?'Only orders linked to this exhibition are shown.':'No exhibition found; showing current-year orders only.')+'</div></div><div class="grid">'+ [['Total Customers',new Set(scopedOrders.map(o=>String(o.customerId))).size],['Total Orders',scopedOrders.length],['Direct / SM',directOrders.length+' / '+smOrders.length],['Direct Weight',fmt(directWeight)+' g'],['SM Weight',fmt(smWeight)+' g'],['Total Weight',fmt(tScoped.weight)+' g'],['Pending',countStatus('Pending')],['Started',countStatus('Started')],['Finished',countStatus('Finished')],['Delivered',countStatus('Delivered')],['Cancelled',countStatus('Cancelled')]].map(x=>'<div class="card"><div class="muted">'+x[0]+'</div><div class="kpi">'+x[1]+'</div></div>').join('')+ '</div>'+alertCard+'<div class="card"><h2 style="font-size:22px">Quick Actions</h2><div class="quick"><button class="orange" onclick="openCustomer()">+ Customer</button><button class="orange" onclick="openOrder()">+ Order</button><button class="green" onclick="go(\'whatsapp\')">WhatsApp</button><button onclick="go(\'reports\')">Reports</button></div></div>';
+ const deliveryPendingOrders=db.orders.filter(o=>o.status==='Finished'&&!o.delivered);
+ const alertCard='<div class="card section"><h2 style="font-size:20px">Order Alerts & Tracking</h2><div class="grid"><div class="card"><div class="muted">Overdue Orders</div><div class="kpi">'+overdueOrders.length+'</div></div><div class="card"><div class="muted">Production Not Started</div><div class="kpi">'+notStartedOrders.length+'</div></div><div class="card"><div class="muted">Delivery Pending</div><div class="kpi">'+deliveryPendingOrders.length+'</div></div></div>'+(overdueOrders.length?'<p><b>Overdue:</b> '+overdueOrders.map(o=>esc(o.orderNo)+' (due '+esc(o.customerDueDate)+')').join(', ')+'</p>':'')+(notStartedOrders.length?'<p><b>Production not started:</b> '+notStartedOrders.map(o=>esc(o.orderNo)).join(', ')+'</p>':'')+(deliveryPendingOrders.length?'<p><b>Delivery pending:</b> '+deliveryPendingOrders.map(o=>esc(o.orderNo)).join(', ')+'</p>':'')+'</div>';
+ let directOrders=db.orders.filter(o=>o.type==='Direct');
+ let smOrders=db.orders.filter(o=>o.type==='SM');
+ let directWeight=directOrders.reduce((s,o)=>s+(+o.weight||0),0);
+ let smWeight=smOrders.reduce((s,o)=>s+(+o.weight||0),0);
+ $('dashboard').innerHTML='<h2>Dashboard</h2><div class="grid">'+ [['Total Customers',db.customers.length],['Total Orders',db.orders.length],['Direct / SM',directOrders.length+' / '+smOrders.length],['Direct Weight',fmt(directWeight)+' g'],['SM Weight',fmt(smWeight)+' g'],['Total Weight',fmt(t.weight)+' g'],['Pending',t.pending],['Started',t.started],['Finished',t.finished],['Delivered',t.delivered],['Cancelled',t.cancelled]].map(x=>'<div class="card"><div class="muted">'+x[0]+'</div><div class="kpi">'+x[1]+'</div></div>').join('')+ '</div>'+alertCard+'<div class="card"><h2 style="font-size:22px">Quick Actions</h2><div class="quick"><button class="orange" onclick="openCustomer()">+ Customer</button><button class="orange" onclick="openOrder()">+ Order</button><button class="green" onclick="go(\'whatsapp\')">WhatsApp</button><button onclick="go(\'reports\')">Reports</button></div></div>';
 }
 function recentOrders(){
  let a=db.orders.slice().reverse().slice(0,8);
@@ -496,9 +484,34 @@ function ringValue(fromId,toId,old){const a=$(fromId)?.value,b=$(toId)?.value;if
 function openOrder(id){
  if(!db.customers.length)return toast('Add a customer first');
  let today=new Date().toISOString().slice(0,10);
- let o=id?ord(id):{orderNo:'',orderDate:today,customerId:'',type:db.settings.defaultType,status:db.settings.defaultStatus,weight:'',touch:'',screw:'',ladyRing:'',gentRing:'',huid:'Yes',advanceMode:'Cash',advanceAmount:'',startDate:'',customerDueDate:'',delivered:'',exhibitionId:'',exhibitionOutcome:'',notes:'',orderTakenBy:'',confirmationDate:'',confirmedBy:''};
+ let o=id?ord(id):{orderNo:'',orderDate:today,customerId:'',type:db.settings.defaultType,status:db.settings.defaultStatus,weight:'',touch:'',screw:'',ladyRing:'',gentRing:'',huid:'Yes',advanceMode:'Cash',advanceAmount:'',startDate:'',finishedDate:'',customerDueDate:'',delivered:'',exhibitionId:'',exhibitionOutcome:'',notes:'',orderTakenBy:'',confirmationDate:'',confirmedBy:''};
  let takenBy=o.orderTakenBy||'',confirmedBy=o.confirmedBy||'',confirmationDate=o.confirmationDate||'';
- modal(id?'Edit Order':'New Order','<div class="formgrid"><div><label>Order Number *</label><input id="ono" value="'+esc(o.orderNo)+'" placeholder="Enter order number (e.g. A1)" oninput="this.value=this.value.toUpperCase()"></div><div><label>Order Date *</label><input id="od" type="date" value="'+esc(o.orderDate)+'"></div><div><label>Jewellery Name *</label><select id="oc" onchange="updateOrderCustomerInfo()"><option value="">-- Select Jewellery Name --</option>'+db.customers.map(c=>'<option value="'+c.id+'" '+(c.id==o.customerId?'selected':'')+'>'+esc(c.shop||'-')+'</option>').join('')+'</select><div id="orderCustomerInfo" class="muted" style="margin-top:7px;font-size:14px;font-weight:700"></div><div id="orderExpoHistory" style="margin-top:8px"></div></div><div><label>Exhibition</label><select id="oex"><option value="">-- None --</option>'+db.exhibitions.map(e=>'<option value="'+e.id+'" '+(e.id==o.exhibitionId?'selected':'')+'>'+esc(e.name)+'</option>').join('')+'</select></div><div><label>Order Type *</label><select id="ot"><option '+(o.type==='Direct'?'selected':'')+'>Direct</option><option '+(o.type==='SM'?'selected':'')+'>SM</option></select></div><div><label>Weight (g) *</label><input id="ow" type="number" step=".001" value="'+esc(o.weight)+'"></div><div><label>Touch *</label><input id="touch" value="'+esc(o.touch)+'"></div><div><label>Screw Type</label><select id="screw">'+screwOptions(o.screw)+'</select></div><div><label>Lady\'s Ring Size (From - To)</label>'+ringOptions(7,17,o.ladyRing,'lrFrom','lrTo')+'</div><div><label>Gent\'s Ring Size (From - To)</label>'+ringOptions(15,29,o.gentRing,'grFrom','grTo')+'</div><div><label>HUID</label><select id="huid"><option '+(o.huid!=='No'?'selected':'')+'>Yes</option><option '+(o.huid==='No'?'selected':'')+'>No</option></select></div><div><label>Advance Mode</label><select id="am"><option '+(o.advanceMode==='Cash'?'selected':'')+'>Cash</option><option '+(o.advanceMode==='Gpay'?'selected':'')+'>Gpay</option><option '+(o.advanceMode==='Bank'?'selected':'')+'>Bank</option></select></div><div><label>Advance Amount (₹)</label><input id="adv" type="number" step=".01" value="'+esc(o.advanceAmount)+'"></div><div><label>Production Start Date</label><input id="sd" type="date" value="'+esc(o.startDate)+'"></div><div><label>Customer Delivery Due Date</label><input id="customerDueDate" type="date" value="'+esc(o.customerDueDate||'')+'"></div><div><label>Status</label><select id="orderStatus">'+STATUS.map(s=>'<option value="'+s+'" '+((o.status||'Pending')===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div><div><label>Exhibition Customer Outcome</label><select id="exhibitionOutcome"><option value="" '+(!o.exhibitionOutcome?'selected':'')+'>-- Select Outcome --</option><option value="Completed" '+(o.exhibitionOutcome==='Completed'?'selected':'')+'>🟢 Green — Collected as promised</option><option value="Late" '+(o.exhibitionOutcome==='Late'?'selected':'')+'>🟡 Yellow — Collected late</option><option value="Cancelled" '+(o.exhibitionOutcome==='Cancelled'?'selected':'')+'>🔴 Red — Cancelled / Not collected</option></select><div class="muted" style="font-size:12px;margin-top:5px">Exhibition follow-up status; separate from production status.</div></div><div><label>Delivery Date</label><input id="dd" type="date" value="'+esc(o.delivered)+'"></div><div><label>Order Taken By *</label><select id="orderTakenBy" data-order-id="'+(id||0)+'">'+staffOptions(takenBy)+'</select></div><div><label>Order Confirmation Date</label><input id="confirmationDate" type="date" value="'+esc(confirmationDate)+'"></div><div><label>Confirmed By</label><select id="confirmedBy">'+confirmationOptions(confirmedBy)+'</select></div><div class="full"><div class="danger-note">💡 Staff names can be added in <b>Settings → Staff Names</b>. These details are saved with the order and shown in Order Management, Reports, CSV and print slips.</div></div><div class="full"><label>Notes</label><textarea id="onotes" rows="3">'+esc(o.notes)+'</textarea></div></div><div class="actions"><button class="orange" onclick="saveOrder('+(id||0)+')">Save Order</button></div>');
+ modal(id?'Edit Order':'New Order','<div class="formgrid">'+
+ '<div><label>Order No. *</label><input id="ono" value="'+esc(o.orderNo)+'" placeholder="Enter order number (e.g. A1)" oninput="this.value=this.value.toUpperCase()"></div>'+
+ '<div><label>Order Date *</label><input id="od" type="date" value="'+esc(o.orderDate)+'"></div>'+
+ '<div><label>Taken By *</label><select id="orderTakenBy" data-order-id="'+(id||0)+'">'+staffOptions(takenBy)+'</select></div>'+
+ '<div class="jewellery-field"><label>Jewellery Name *</label><select id="oc" onchange="updateOrderCustomerInfo()"><option value="">-- Select Jewellery Name --</option>'+db.customers.map(c=>'<option value="'+c.id+'" '+(c.id==o.customerId?'selected':'')+'>'+esc(c.shop||'-')+'</option>').join('')+'</select><div id="orderCustomerInfo" class="muted" style="margin-top:7px;font-size:13px;font-weight:700"></div><div id="orderExpoHistory" style="margin-top:8px"></div></div>'+
+ '<div><label>Exhibition</label><select id="oex"><option value="">-- None --</option>'+db.exhibitions.map(e=>'<option value="'+e.id+'" '+(e.id==o.exhibitionId?'selected':'')+'>'+esc(e.name)+'</option>').join('')+'</select></div>'+
+ '<div><label>Order Type *</label><select id="ot"><option '+(o.type==='Direct'?'selected':'')+'>Direct</option><option '+(o.type==='SM'?'selected':'')+'>SM</option></select></div>'+
+ '<div><label>Weight (g) *</label><input id="ow" type="number" step=".001" value="'+esc(o.weight)+'"></div>'+
+ '<div><label>Touch *</label><input id="touch" value="'+esc(o.touch)+'"></div>'+
+ '<div><label>Screw Type</label><select id="screw">'+screwOptions(o.screw)+'</select></div>'+
+ '<div><label>Lady\'s Ring Size</label>'+ringOptions(7,17,o.ladyRing,'lrFrom','lrTo')+'</div>'+
+ '<div><label>Gent\'s Ring Size</label>'+ringOptions(15,29,o.gentRing,'grFrom','grTo')+'</div>'+
+ '<div><label>HUID</label><select id="huid"><option '+(o.huid!=='No'?'selected':'')+'>Yes</option><option '+(o.huid==='No'?'selected':'')+'>No</option></select></div>'+
+ '<div><label>Advance Mode</label><select id="am"><option '+(o.advanceMode==='Cash'?'selected':'')+'>Cash</option><option '+(o.advanceMode==='Gpay'?'selected':'')+'>Gpay</option><option '+(o.advanceMode==='Bank'?'selected':'')+'>Bank</option></select></div>'+
+ '<div><label>Advance (₹)</label><input id="adv" type="number" step=".01" value="'+esc(o.advanceAmount)+'"></div>'+
+ '<div><label>Customer Due Date</label><input id="customerDueDate" type="date" value="'+esc(o.customerDueDate||'')+'"></div>'+
+ '<div><label>Confirmation Date</label><input id="confirmationDate" type="date" value="'+esc(confirmationDate)+'"></div>'+
+ '<div><label>Confirmed By</label><select id="confirmedBy">'+confirmationOptions(confirmedBy)+'</select></div>'+
+ '<div><label>Status</label><select id="orderStatus">'+STATUS.map(s=>'<option value="'+s+'" '+((o.status||'Pending')===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div>'+
+ '<div><label>Start Date</label><input id="sd" type="date" value="'+esc(o.startDate||'')+'"></div>'+
+ '<div><label>Finished Date</label><input id="finishedDate" type="date" value="'+esc(o.finishedDate||'')+'"></div>'+
+ '<div><label>Delivered Date</label><input id="dd" type="date" value="'+esc(o.delivered||'')+'"></div>'+
+ '<div><label>Customer Outcome</label><select id="exhibitionOutcome"><option value="" '+(!o.exhibitionOutcome?'selected':'')+'>-- Select Outcome --</option><option value="Completed" '+(o.exhibitionOutcome==='Completed'?'selected':'')+'>🟢 Green — Collected as promised</option><option value="Late" '+(o.exhibitionOutcome==='Late'?'selected':'')+'>🟡 Yellow — Collected late</option><option value="Cancelled" '+(o.exhibitionOutcome==='Cancelled'?'selected':'')+'>🔴 Red — Cancelled / Not collected</option></select></div>'+
+ '<div class="full"><label>Notes</label><textarea id="onotes" rows="3" placeholder="Enter order notes...">'+esc(o.notes)+'</textarea></div>'+
+ '<div class="full danger-note">💡 Staff names can be managed in <b>Settings → Staff Names</b>. Dates and order details are saved with this order.</div></div>'+
+ '<div class="form-actions"><button class="orange" onclick="saveOrder('+(id||0)+')">💾 Save Order</button><button onclick="closeModal()">✕ Close</button></div>');
  updateOrderCustomerInfo();
 }
 function expoOutcomeMeta(value){
@@ -542,12 +555,13 @@ function updateOrderCustomerInfo(){
  $('orderCustomerInfo').innerHTML=esc(c.name||'-')+' - 📱 '+esc(c.mobile||'-')+' &nbsp; <b>'+label+'</b>';
 }
 function saveOrder(id){
- let x={orderNo:$('ono').value.trim(),orderDate:$('od').value,customerId:Number($('oc').value),exhibitionId:$('oex').value?Number($('oex').value):'',type:$('ot').value,weight:Number($('ow').value)||0,touch:$('touch').value.trim(),screw:$('screw').value.trim(),ladyRing:ringValue('lrFrom','lrTo',ord(id)?.ladyRing),gentRing:ringValue('grFrom','grTo',ord(id)?.gentRing),huid:$('huid').value,advanceMode:$('am').value,advanceAmount:Number($('adv').value)||0,startDate:$('sd').value,customerDueDate:$('customerDueDate').value,status:String($('orderStatus').value),exhibitionOutcome:$('exhibitionOutcome')?.value||'',delivered:$('dd').value,orderTakenBy:$('orderTakenBy').value.trim(),confirmationDate:$('confirmationDate').value,confirmedBy:$('confirmedBy').value.trim(),notes:$('onotes').value.trim()};
+ let x={orderNo:$('ono').value.trim(),orderDate:$('od').value,customerId:Number($('oc').value),exhibitionId:$('oex').value?Number($('oex').value):'',type:$('ot').value,weight:Number($('ow').value)||0,touch:$('touch').value.trim(),screw:$('screw').value.trim(),ladyRing:ringValue('lrFrom','lrTo',ord(id)?.ladyRing),gentRing:ringValue('grFrom','grTo',ord(id)?.gentRing),huid:$('huid').value,advanceMode:$('am').value,advanceAmount:Number($('adv').value)||0,startDate:$('sd').value,finishedDate:$('finishedDate')?.value||'',customerDueDate:$('customerDueDate').value,status:String($('orderStatus').value),exhibitionOutcome:$('exhibitionOutcome')?.value||'',delivered:$('dd').value,orderTakenBy:$('orderTakenBy').value.trim(),confirmationDate:$('confirmationDate').value,confirmedBy:$('confirmedBy').value.trim(),notes:$('onotes').value.trim()};
  x.orderNo=x.orderNo.toUpperCase().trim(); if(!x.orderNo||!x.orderDate||!x.customerId||!x.weight||!x.touch)return toast('Order No, date, jewellery name, weight and touch are required');
  if(!x.orderTakenBy)return toast('Order Taken By is required');
  let target=id?ord(id):null;
  if(target)Object.assign(target,x);else{target={id:Date.now(),...x};db.orders.push(target)}
  if(target.status==='Started'&&!target.startDate)target.startDate=new Date().toISOString().slice(0,10);
+ if(target.status==='Finished'&&!target.finishedDate)target.finishedDate=new Date().toISOString().slice(0,10);
  if(target.status==='Delivered'&&!target.delivered)target.delivered=new Date().toISOString().slice(0,10);
  save();closeModal();renderAll();toast('Order saved as '+target.status);
 }
@@ -555,6 +569,7 @@ function setStatus(id,s){
  let o=ord(id);if(!o)return toast('Order not found');
  o.status=STATUS.includes(s)?s:'Pending';
  if(o.status==='Started'&&!o.startDate)o.startDate=new Date().toISOString().slice(0,10);
+ if(o.status==='Finished'&&!o.finishedDate)o.finishedDate=new Date().toISOString().slice(0,10);
  if(o.status==='Delivered'&&!o.delivered)o.delivered=new Date().toISOString().slice(0,10);
  save();renderAll();toast('Status updated: '+o.status);
 }
@@ -565,11 +580,10 @@ function copyOrder(id){
  navigator.clipboard?.writeText(s);toast('Order details copied');
 }
 function renderOrders(){
- const currentYear=new Date().getFullYear();
  let q=($('oq')?.value||'').toLowerCase(),type=$('ofType')?.value||'',st=$('ofStatus')?.value||'';
- let a=db.orders.filter(o=>orderYear(o)===currentYear&&(o.orderNo+' '+cust(o.customerId).name+' '+cust(o.customerId).shop+' '+cust(o.customerId).mobile+' '+o.status+' '+(o.orderTakenBy||'')+' '+(o.confirmedBy||'')).toLowerCase().includes(q)&&(!type||o.type===type)&&(!st||o.status===st));
+ let a=db.orders.filter(o=>(o.orderNo+' '+cust(o.customerId).name+' '+cust(o.customerId).shop+' '+cust(o.customerId).mobile+' '+o.status+' '+(o.orderTakenBy||'')+' '+(o.confirmedBy||'')).toLowerCase().includes(q)&&(!type||o.type===type)&&(!st||o.status===st));
  const dateLabel=d=>d?esc(d):'<span class="muted">Not set</span>';
- $('orders').innerHTML='<h2>Order Management — '+currentYear+'</h2><p class="muted">Only '+currentYear+' orders are shown here. Older orders are available in Production → Previous Orders.</p><div class="actions"><button class="orange" onclick="openOrder()">+ Manual Order</button><button class="no-print" onclick="printOrdersList()">🖨️ Print Orders</button><input id="oq" placeholder="Search order / customer / shop / staff" value="'+esc(q)+'" oninput="renderOrders()"><select id="ofType" onchange="renderOrders()"><option value="">All Types</option><option '+(type==='Direct'?'selected':'')+'>Direct</option><option '+(type==='SM'?'selected':'')+'>SM</option></select><select id="ofStatus" onchange="renderOrders()"><option value="">All Status</option>'+STATUS.map(s=>'<option '+(st===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div><div class="card tablewrap">'+(a.length?'<table><tr><th>Order No.</th><th>Order Date</th><th>Customer / Jewellery</th><th>Type</th><th>Weight</th><th>Customer Due</th><th>Production Start</th><th>Delivered</th><th>Status</th><th class="no-print">Actions</th></tr>'+a.slice().reverse().map(o=>'<tr><td><b>'+esc(o.orderNo)+'</b></td><td>'+dateLabel(o.orderDate)+'</td><td><b>'+esc(cust(o.customerId).shop||cust(o.customerId).name||'-')+'</b><div class="muted">'+esc(cust(o.customerId).name||'')+'</div></td><td>'+esc(o.type)+'</td><td>'+fmt(o.weight)+' g</td><td>'+dateLabel(o.customerDueDate)+'</td><td>'+dateLabel(o.startDate)+'</td><td>'+dateLabel(o.delivered)+'</td><td>'+badge(o.status)+'</td><td class="no-print"><button class="light" onclick="viewOrderDetails('+o.id+')">Details</button><button class="light" onclick="openOrder('+o.id+')">Edit</button><button onclick="copyOrder('+o.id+')">Copy</button><button class="green" onclick="openWA('+o.customerId+','+o.id+')">WA</button><button onclick="printOrder('+o.id+')">Print</button><button class="red" onclick="deleteOrder('+o.id+')">Delete</button></td></tr>').join('')+'</table>':'<div class="empty">No orders found</div>')+'</div>';
+ $('orders').innerHTML='<h2>Order Management</h2><div class="actions"><button class="orange" onclick="openOrder()">+ Manual Order</button><button class="no-print" onclick="printOrdersList()">🖨️ Print Orders</button><input id="oq" placeholder="Search order / customer / shop / staff" value="'+esc(q)+'" oninput="renderOrders()"><select id="ofType" onchange="renderOrders()"><option value="">All Types</option><option '+(type==='Direct'?'selected':'')+'>Direct</option><option '+(type==='SM'?'selected':'')+'>SM</option></select><select id="ofStatus" onchange="renderOrders()"><option value="">All Status</option>'+STATUS.map(s=>'<option '+(st===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div><div class="card tablewrap">'+(a.length?'<table><tr><th>Order No.</th><th>Order Date</th><th>Customer / Jewellery</th><th>Type</th><th>Weight</th><th>Customer Due</th><th>Production Start</th><th>Delivered</th><th>Status</th><th class="no-print">Actions</th></tr>'+a.slice().reverse().map(o=>'<tr><td><b>'+esc(o.orderNo)+'</b></td><td>'+dateLabel(o.orderDate)+'</td><td><b>'+esc(cust(o.customerId).shop||cust(o.customerId).name||'-')+'</b><div class="muted">'+esc(cust(o.customerId).name||'')+'</div></td><td>'+esc(o.type)+'</td><td>'+fmt(o.weight)+' g</td><td>'+dateLabel(o.customerDueDate)+'</td><td>'+dateLabel(o.startDate)+'</td><td>'+dateLabel(o.delivered)+'</td><td>'+badge(o.status)+'</td><td class="no-print"><button class="light" onclick="viewOrderDetails('+o.id+')">Details</button><button class="light" onclick="openOrder('+o.id+')">Edit</button><button onclick="copyOrder('+o.id+')">Copy</button><button class="green" onclick="openWA('+o.customerId+','+o.id+')">WA</button><button onclick="printOrder('+o.id+')">Print</button><button class="red" onclick="deleteOrder('+o.id+')">Delete</button></td></tr>').join('')+'</table>':'<div class="empty">No orders found</div>')+'</div>';
 }
 function viewOrderDetails(id){
  const o=ord(id); if(!o)return toast('Order not found');
@@ -597,11 +611,11 @@ function openPreviousOrders(){
  let body='<div class="card"><p class="muted">Current year ('+cy+') orders are shown in Production. Older orders are kept here separately.</p>';
  if(!years.length){ body+='<div class="empty">No previous year orders</div>'; }
  else {
-   body+='<div class="tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">'+years.map(y=>{
+   body+='<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">'+years.map(y=>{
      const yearOrders=db.orders.filter(o=>orderYear(o)===y);
      const count=yearOrders.length;
      const weight=yearOrders.reduce((s,o)=>s+(Number(o.weight)||0),0);
-     return '<button type="button" onclick="showPreviousOrdersYear('+y+')" style="display:block!important;width:100%;min-height:155px;text-align:left!important;background:#fff7ed!important;border:2px solid #ea580c!important;border-radius:14px;padding:18px!important;color:#1f2937!important;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="display:block!important;font-size:25px!important;font-weight:800!important;color:#9a3412!important">'+y+'</span><span style="display:inline-block!important;background:#9a3412!important;color:#fff!important;border-radius:20px;padding:5px 9px;font-size:12px;font-weight:700">'+count+' ORDERS</span></div><div style="display:block!important;font-size:30px!important;font-weight:800!important;color:#111827!important;margin-top:18px">'+count+' <span style="font-size:14px;font-weight:600;color:#4b5563">orders</span></div><div style="display:block!important;font-size:13px!important;color:#4b5563!important;margin-top:5px">Total Weight: '+fmt(weight)+' g</div><div style="display:block!important;font-size:13px!important;font-weight:700!important;color:#9a3412!important;margin-top:10px">View order list →</div></button>';
+     return '<button class="tile" style="display:block;width:100%;min-height:150px;text-align:left;background:#fff7ed;border:2px solid #f0a45b;border-radius:16px;padding:18px;color:#222;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06)" onclick="showPreviousOrdersYear('+y+')"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><h3 style="margin:0;font-size:24px;color:#9a3412">'+y+'</h3><span style="display:inline-block;background:#9a3412;color:#fff;border-radius:20px;padding:5px 10px;font-size:12px;font-weight:700">'+count+' ORDERS</span></div><div style="font-size:30px;font-weight:800;margin-top:18px;color:#222">'+count+' <span style="font-size:14px;font-weight:600;color:#555">orders</span></div><div style="font-size:13px;color:#555;margin-top:5px">Total Weight: '+fmt(weight)+' g</div><div style="font-size:13px;color:#9a3412;font-weight:700;margin-top:10px">View order list →</div></button>';
    }).join('')+'</div>';
  }
  body+='</div>';
@@ -609,8 +623,8 @@ function openPreviousOrders(){
 }
 function showPreviousOrdersYear(year){
  const a=db.orders.filter(o=>orderYear(o)===Number(year)).slice().reverse();
- const rows=a.length?a.map(o=>'<tr><td>'+esc(o.orderNo)+'</td><td>'+esc(o.orderDate||'-')+'</td><td>'+esc(cust(o.customerId).name)+'</td><td>'+fmt(o.weight)+'g</td><td>'+esc(o.touch||'-')+'</td><td>'+esc(o.startDate||'-')+'</td><td>'+badge(o.status)+'</td><td><button class="light" onclick="openOrder('+o.id+')">Open</button></td></tr>').join(''):'<tr><td colspan="8" class="empty">No orders</td></tr>';
- modal('Previous Orders - '+year,'<div class="actions"><button onclick="openPreviousOrders()">← Back to Years</button></div><div class="card tablewrap"><table><tr><th>Order</th><th>Date</th><th>Customer</th><th>Weight</th><th>Touch</th><th>Start</th><th>Status</th><th>Action</th></tr>'+rows+'</table></div>');
+ const rows=a.length?a.map(o=>'<tr><td><b>'+esc(o.orderNo||'-')+'</b></td><td>'+esc(o.orderDate||'-')+'</td><td><b>'+esc(cust(o.customerId).shop||cust(o.customerId).name||'-')+'</b><div class="muted">'+esc(cust(o.customerId).name||'')+'</div></td><td>'+fmt(o.weight)+' g</td><td>'+esc(o.touch||'-')+'</td><td>'+esc(o.startDate||'-')+'</td><td>'+esc(o.customerDueDate||'-')+'</td><td>'+esc(o.delivered||'-')+'</td><td>'+badge(o.status)+'</td><td><button class="light" onclick="openOrder('+o.id+')">Open</button></td></tr>').join(''):'<tr><td colspan="8" class="empty">No orders</td></tr>';
+ modal('Previous Orders - '+year,'<div class="actions"><button onclick="openPreviousOrders()">← Back to Years</button></div><div class="card"><h3>'+year+' Orders · '+a.length+' orders</h3><p class="muted">Older orders are shown here. Select Open to view or edit an order.</p><div class="tablewrap"><table><tr><th>Order No.</th><th>Order Date</th><th>Party / Customer</th><th>Weight</th><th>Touch</th><th>Production Start</th><th>Customer Due Date</th><th>Delivered Date</th><th>Status</th><th>Action</th></tr>'+rows+'</table></div></div>');
 }
 let productionExpoFilter='all';
 function selectProductionExpo(id){productionExpoFilter=String(id);renderProduction();}
