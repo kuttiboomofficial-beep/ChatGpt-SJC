@@ -597,9 +597,11 @@ function openPreviousOrders(){
  let body='<div class="card"><p class="muted">Current year ('+cy+') orders are shown in Production. Older orders are kept here separately.</p>';
  if(!years.length){ body+='<div class="empty">No previous year orders</div>'; }
  else {
-   body+='<div class="tiles">'+years.map(y=>{
-     const count=db.orders.filter(o=>orderYear(o)===y).length;
-     return '<button class="tile" onclick="showPreviousOrdersYear('+y+')"><h3>'+y+'</h3><div class="kpi">'+count+'</div><div class="muted">Orders • Tap to open</div></button>';
+   body+='<div class="tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">'+years.map(y=>{
+     const yearOrders=db.orders.filter(o=>orderYear(o)===y);
+     const count=yearOrders.length;
+     const weight=yearOrders.reduce((s,o)=>s+(Number(o.weight)||0),0);
+     return '<button type="button" onclick="showPreviousOrdersYear('+y+')" style="display:block!important;width:100%;min-height:155px;text-align:left!important;background:#fff7ed!important;border:2px solid #ea580c!important;border-radius:14px;padding:18px!important;color:#1f2937!important;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08)"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="display:block!important;font-size:25px!important;font-weight:800!important;color:#9a3412!important">'+y+'</span><span style="display:inline-block!important;background:#9a3412!important;color:#fff!important;border-radius:20px;padding:5px 9px;font-size:12px;font-weight:700">'+count+' ORDERS</span></div><div style="display:block!important;font-size:30px!important;font-weight:800!important;color:#111827!important;margin-top:18px">'+count+' <span style="font-size:14px;font-weight:600;color:#4b5563">orders</span></div><div style="display:block!important;font-size:13px!important;color:#4b5563!important;margin-top:5px">Total Weight: '+fmt(weight)+' g</div><div style="display:block!important;font-size:13px!important;font-weight:700!important;color:#9a3412!important;margin-top:10px">View order list →</div></button>';
    }).join('')+'</div>';
  }
  body+='</div>';
