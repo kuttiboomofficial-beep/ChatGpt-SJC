@@ -583,9 +583,11 @@ function openPreviousOrders(){
  let body='<div class="card"><p class="muted">Current year ('+cy+') orders are shown in Production. Older orders are kept here separately.</p>';
  if(!years.length){ body+='<div class="empty">No previous year orders</div>'; }
  else {
-   body+='<div class="tiles">'+years.map(y=>{
-     const count=db.orders.filter(o=>orderYear(o)===y).length;
-     return '<button class="tile" onclick="showPreviousOrdersYear('+y+')"><h3>'+y+'</h3><div class="kpi">'+count+'</div><div class="muted">Orders • Tap to open</div></button>';
+   body+='<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">'+years.map(y=>{
+     const yearOrders=db.orders.filter(o=>orderYear(o)===y);
+     const count=yearOrders.length;
+     const weight=yearOrders.reduce((s,o)=>s+(Number(o.weight)||0),0);
+     return '<button class="tile" style="display:block;width:100%;min-height:150px;text-align:left;background:#fff7ed;border:2px solid #f0a45b;border-radius:16px;padding:18px;color:#222;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06)" onclick="showPreviousOrdersYear('+y+')"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><h3 style="margin:0;font-size:24px;color:#9a3412">'+y+'</h3><span style="display:inline-block;background:#9a3412;color:#fff;border-radius:20px;padding:5px 10px;font-size:12px;font-weight:700">'+count+' ORDERS</span></div><div style="font-size:30px;font-weight:800;margin-top:18px;color:#222">'+count+' <span style="font-size:14px;font-weight:600;color:#555">orders</span></div><div style="font-size:13px;color:#555;margin-top:5px">Total Weight: '+fmt(weight)+' g</div><div style="font-size:13px;color:#9a3412;font-weight:700;margin-top:10px">View order list →</div></button>';
    }).join('')+'</div>';
  }
  body+='</div>';
@@ -593,8 +595,8 @@ function openPreviousOrders(){
 }
 function showPreviousOrdersYear(year){
  const a=db.orders.filter(o=>orderYear(o)===Number(year)).slice().reverse();
- const rows=a.length?a.map(o=>'<tr><td>'+esc(o.orderNo)+'</td><td>'+esc(o.orderDate||'-')+'</td><td>'+esc(cust(o.customerId).name)+'</td><td>'+fmt(o.weight)+'g</td><td>'+esc(o.touch||'-')+'</td><td>'+esc(o.startDate||'-')+'</td><td>'+badge(o.status)+'</td><td><button class="light" onclick="openOrder('+o.id+')">Open</button></td></tr>').join(''):'<tr><td colspan="8" class="empty">No orders</td></tr>';
- modal('Previous Orders - '+year,'<div class="actions"><button onclick="openPreviousOrders()">← Back to Years</button></div><div class="card tablewrap"><table><tr><th>Order</th><th>Date</th><th>Customer</th><th>Weight</th><th>Touch</th><th>Start</th><th>Status</th><th>Action</th></tr>'+rows+'</table></div>');
+ const rows=a.length?a.map(o=>'<tr><td><b>'+esc(o.orderNo||'-')+'</b></td><td>'+esc(o.orderDate||'-')+'</td><td><b>'+esc(cust(o.customerId).shop||cust(o.customerId).name||'-')+'</b><div class="muted">'+esc(cust(o.customerId).name||'')+'</div></td><td>'+fmt(o.weight)+' g</td><td>'+esc(o.touch||'-')+'</td><td>'+esc(o.startDate||'-')+'</td><td>'+esc(o.customerDueDate||'-')+'</td><td>'+esc(o.delivered||'-')+'</td><td>'+badge(o.status)+'</td><td><button class="light" onclick="openOrder('+o.id+')">Open</button></td></tr>').join(''):'<tr><td colspan="8" class="empty">No orders</td></tr>';
+ modal('Previous Orders - '+year,'<div class="actions"><button onclick="openPreviousOrders()">← Back to Years</button></div><div class="card"><h3>'+year+' Orders · '+a.length+' orders</h3><p class="muted">Older orders are shown here. Select Open to view or edit an order.</p><div class="tablewrap"><table><tr><th>Order No.</th><th>Order Date</th><th>Party / Customer</th><th>Weight</th><th>Touch</th><th>Production Start</th><th>Customer Due Date</th><th>Delivered Date</th><th>Status</th><th>Action</th></tr>'+rows+'</table></div></div>');
 }
 let productionExpoFilter='all';
 function selectProductionExpo(id){productionExpoFilter=String(id);renderProduction();}
