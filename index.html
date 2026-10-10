@@ -302,18 +302,31 @@ function totals(){
  return z;
 }
 function renderDashboard(){
- let t=totals();
+ const cy=new Date().getFullYear();
  const todayStr=new Date().toISOString().slice(0,10);
- const activeOrders=db.orders.filter(o=>!['Delivered','Cancelled'].includes(o.status));
+ // Dashboard focuses on the current exhibition; if none is active today, use the most recently started exhibition.
+ const currentExhibitions=(db.exhibitions||[]).filter(e=>{
+   const s=String(e.start||''), en=String(e.end||e.start||'');
+   return s && s<=todayStr && en>=todayStr;
+ }).sort((a,b)=>String(b.start||'').localeCompare(String(a.start||'')));
+ const latestExhibition=(db.exhibitions||[]).filter(e=>e.start).slice().sort((a,b)=>String(b.start||'').localeCompare(String(a.start||'')))[0];
+ const currentExhibition=currentExhibitions[0]||latestExhibition||null;
+ const scopedOrders=currentExhibition
+   ? db.orders.filter(o=>String(o.exhibitionId||'')===String(currentExhibition.id))
+   : db.orders.filter(o=>orderYear(o)===cy);
+ const tScoped={weight:scopedOrders.reduce((s,o)=>s+(Number(o.weight)||0),0)};
+ const countStatus=s=>scopedOrders.filter(o=>o.status===s).length;
+ const activeOrders=scopedOrders.filter(o=>!['Delivered','Cancelled'].includes(o.status));
  const overdueOrders=activeOrders.filter(o=>o.customerDueDate&&o.customerDueDate<todayStr);
  const notStartedOrders=activeOrders.filter(o=>o.status==='Pending'&&!o.startDate);
- const deliveryPendingOrders=db.orders.filter(o=>o.status==='Finished'&&!o.delivered);
- const alertCard='<div class="card section"><h2 style="font-size:20px">Order Alerts & Tracking</h2><div class="grid"><div class="card"><div class="muted">Overdue Orders</div><div class="kpi">'+overdueOrders.length+'</div></div><div class="card"><div class="muted">Production Not Started</div><div class="kpi">'+notStartedOrders.length+'</div></div><div class="card"><div class="muted">Delivery Pending</div><div class="kpi">'+deliveryPendingOrders.length+'</div></div></div>'+(overdueOrders.length?'<p><b>Overdue:</b> '+overdueOrders.map(o=>esc(o.orderNo)+' (due '+esc(o.customerDueDate)+')').join(', ')+'</p>':'')+(notStartedOrders.length?'<p><b>Production not started:</b> '+notStartedOrders.map(o=>esc(o.orderNo)).join(', ')+'</p>':'')+(deliveryPendingOrders.length?'<p><b>Delivery pending:</b> '+deliveryPendingOrders.map(o=>esc(o.orderNo)).join(', ')+'</p>':'')+'</div>';
- let directOrders=db.orders.filter(o=>o.type==='Direct');
- let smOrders=db.orders.filter(o=>o.type==='SM');
- let directWeight=directOrders.reduce((s,o)=>s+(+o.weight||0),0);
- let smWeight=smOrders.reduce((s,o)=>s+(+o.weight||0),0);
- $('dashboard').innerHTML='<h2>Dashboard</h2><div class="grid">'+ [['Total Customers',db.customers.length],['Total Orders',db.orders.length],['Direct / SM',directOrders.length+' / '+smOrders.length],['Direct Weight',fmt(directWeight)+' g'],['SM Weight',fmt(smWeight)+' g'],['Total Weight',fmt(t.weight)+' g'],['Pending',t.pending],['Started',t.started],['Finished',t.finished],['Delivered',t.delivered],['Cancelled',t.cancelled]].map(x=>'<div class="card"><div class="muted">'+x[0]+'</div><div class="kpi">'+x[1]+'</div></div>').join('')+ '</div>'+alertCard+'<div class="card"><h2 style="font-size:22px">Quick Actions</h2><div class="quick"><button class="orange" onclick="openCustomer()">+ Customer</button><button class="orange" onclick="openOrder()">+ Order</button><button class="green" onclick="go(\'whatsapp\')">WhatsApp</button><button onclick="go(\'reports\')">Reports</button></div></div>';
+ const deliveryPendingOrders=scopedOrders.filter(o=>o.status==='Finished'&&!o.delivered);
+ const alertCard='<div class="card section"><h2 style="font-size:20px">Current Exhibition Alerts & Tracking</h2><div class="grid"><div class="card"><div class="muted">Overdue Orders</div><div class="kpi">'+overdueOrders.length+'</div></div><div class="card"><div class="muted">Production Not Started</div><div class="kpi">'+notStartedOrders.length+'</div></div><div class="card"><div class="muted">Delivery Pending</div><div class="kpi">'+deliveryPendingOrders.length+'</div></div></div>'+(overdueOrders.length?'<p><b>Overdue:</b> '+overdueOrders.map(o=>esc(o.orderNo)+' (due '+esc(o.customerDueDate)+')').join(', ')+'</p>':'')+(notStartedOrders.length?'<p><b>Production not started:</b> '+notStartedOrders.map(o=>esc(o.orderNo)).join(', ')+'</p>':'')+(deliveryPendingOrders.length?'<p><b>Delivery pending:</b> '+deliveryPendingOrders.map(o=>esc(o.orderNo)).join(', ')+'</p>':'')+'</div>';
+ const directOrders=scopedOrders.filter(o=>o.type==='Direct');
+ const smOrders=scopedOrders.filter(o=>o.type==='SM');
+ const directWeight=directOrders.reduce((s,o)=>s+(Number(o.weight)||0),0);
+ const smWeight=smOrders.reduce((s,o)=>s+(Number(o.weight)||0),0);
+ const title=currentExhibition?('Current Exhibition — '+(currentExhibition.name||'Exhibition')):('Current Year Orders — '+cy);
+ $('dashboard').innerHTML='<h2>Dashboard</h2><div class="card" style="margin-bottom:14px;padding:12px 16px"><h3 style="margin:0 0 4px">'+esc(title)+'</h3><div class="muted">'+(currentExhibition?'Only orders linked to this exhibition are shown.':'No exhibition found; showing current-year orders only.')+'</div></div><div class="grid">'+ [['Total Customers',new Set(scopedOrders.map(o=>String(o.customerId))).size],['Total Orders',scopedOrders.length],['Direct / SM',directOrders.length+' / '+smOrders.length],['Direct Weight',fmt(directWeight)+' g'],['SM Weight',fmt(smWeight)+' g'],['Total Weight',fmt(tScoped.weight)+' g'],['Pending',countStatus('Pending')],['Started',countStatus('Started')],['Finished',countStatus('Finished')],['Delivered',countStatus('Delivered')],['Cancelled',countStatus('Cancelled')]].map(x=>'<div class="card"><div class="muted">'+x[0]+'</div><div class="kpi">'+x[1]+'</div></div>').join('')+ '</div>'+alertCard+'<div class="card"><h2 style="font-size:22px">Quick Actions</h2><div class="quick"><button class="orange" onclick="openCustomer()">+ Customer</button><button class="orange" onclick="openOrder()">+ Order</button><button class="green" onclick="go(\'whatsapp\')">WhatsApp</button><button onclick="go(\'reports\')">Reports</button></div></div>';
 }
 function recentOrders(){
  let a=db.orders.slice().reverse().slice(0,8);
@@ -583,11 +596,9 @@ function openPreviousOrders(){
  let body='<div class="card"><p class="muted">Current year ('+cy+') orders are shown in Production. Older orders are kept here separately.</p>';
  if(!years.length){ body+='<div class="empty">No previous year orders</div>'; }
  else {
-   body+='<div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">'+years.map(y=>{
-     const yearOrders=db.orders.filter(o=>orderYear(o)===y);
-     const count=yearOrders.length;
-     const weight=yearOrders.reduce((s,o)=>s+(Number(o.weight)||0),0);
-     return '<button class="tile" style="display:block;width:100%;min-height:150px;text-align:left;background:#fff7ed;border:2px solid #f0a45b;border-radius:16px;padding:18px;color:#222;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06)" onclick="showPreviousOrdersYear('+y+')"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><h3 style="margin:0;font-size:24px;color:#9a3412">'+y+'</h3><span style="display:inline-block;background:#9a3412;color:#fff;border-radius:20px;padding:5px 10px;font-size:12px;font-weight:700">'+count+' ORDERS</span></div><div style="font-size:30px;font-weight:800;margin-top:18px;color:#222">'+count+' <span style="font-size:14px;font-weight:600;color:#555">orders</span></div><div style="font-size:13px;color:#555;margin-top:5px">Total Weight: '+fmt(weight)+' g</div><div style="font-size:13px;color:#9a3412;font-weight:700;margin-top:10px">View order list →</div></button>';
+   body+='<div class="tiles">'+years.map(y=>{
+     const count=db.orders.filter(o=>orderYear(o)===y).length;
+     return '<button class="tile" onclick="showPreviousOrdersYear('+y+')"><h3>'+y+'</h3><div class="kpi">'+count+'</div><div class="muted">Orders • Tap to open</div></button>';
    }).join('')+'</div>';
  }
  body+='</div>';
@@ -595,8 +606,8 @@ function openPreviousOrders(){
 }
 function showPreviousOrdersYear(year){
  const a=db.orders.filter(o=>orderYear(o)===Number(year)).slice().reverse();
- const rows=a.length?a.map(o=>'<tr><td><b>'+esc(o.orderNo||'-')+'</b></td><td>'+esc(o.orderDate||'-')+'</td><td><b>'+esc(cust(o.customerId).shop||cust(o.customerId).name||'-')+'</b><div class="muted">'+esc(cust(o.customerId).name||'')+'</div></td><td>'+fmt(o.weight)+' g</td><td>'+esc(o.touch||'-')+'</td><td>'+esc(o.startDate||'-')+'</td><td>'+esc(o.customerDueDate||'-')+'</td><td>'+esc(o.delivered||'-')+'</td><td>'+badge(o.status)+'</td><td><button class="light" onclick="openOrder('+o.id+')">Open</button></td></tr>').join(''):'<tr><td colspan="8" class="empty">No orders</td></tr>';
- modal('Previous Orders - '+year,'<div class="actions"><button onclick="openPreviousOrders()">← Back to Years</button></div><div class="card"><h3>'+year+' Orders · '+a.length+' orders</h3><p class="muted">Older orders are shown here. Select Open to view or edit an order.</p><div class="tablewrap"><table><tr><th>Order No.</th><th>Order Date</th><th>Party / Customer</th><th>Weight</th><th>Touch</th><th>Production Start</th><th>Customer Due Date</th><th>Delivered Date</th><th>Status</th><th>Action</th></tr>'+rows+'</table></div></div>');
+ const rows=a.length?a.map(o=>'<tr><td>'+esc(o.orderNo)+'</td><td>'+esc(o.orderDate||'-')+'</td><td>'+esc(cust(o.customerId).name)+'</td><td>'+fmt(o.weight)+'g</td><td>'+esc(o.touch||'-')+'</td><td>'+esc(o.startDate||'-')+'</td><td>'+badge(o.status)+'</td><td><button class="light" onclick="openOrder('+o.id+')">Open</button></td></tr>').join(''):'<tr><td colspan="8" class="empty">No orders</td></tr>';
+ modal('Previous Orders - '+year,'<div class="actions"><button onclick="openPreviousOrders()">← Back to Years</button></div><div class="card tablewrap"><table><tr><th>Order</th><th>Date</th><th>Customer</th><th>Weight</th><th>Touch</th><th>Start</th><th>Status</th><th>Action</th></tr>'+rows+'</table></div>');
 }
 let productionExpoFilter='all';
 function selectProductionExpo(id){productionExpoFilter=String(id);renderProduction();}
