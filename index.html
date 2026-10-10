@@ -27,7 +27,7 @@ h2{font-size:30px;margin:8px 0 20px}h3{margin-top:4px}
 .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .tile{background:#fff;border:1px solid #ddd;border-radius:16px;padding:16px}
 .kpi{font-size:30px;font-weight:800;margin-top:8px}.muted{color:#777;font-size:14px}
-.formgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}.formgrid .jewellery-field{grid-column:span 2}.full{grid-column:1/-1}
+.formgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:start}.formgrid .jewellery-field{grid-column:span 2}.full{grid-column:1/-1}
 label{display:block;font-size:14px;font-weight:700;margin:6px 0}
 input,select,textarea{width:100%;padding:12px;border:1px solid #d2d2d2;border-radius:10px;background:#fff}
 textarea{resize:vertical}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
@@ -44,7 +44,7 @@ td button{margin:2px;padding:8px 10px;font-size:13px}
 .quick{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
 .empty{padding:25px;text-align:center;color:#777}
 .modalbg{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:12px;z-index:50}
-.modalbg.show{display:flex}.modal{width:min(1240px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;padding:24px}.modal h2{font-size:28px;margin:0 0 18px}.formgrid label{font-size:13px;font-weight:750;margin:3px 0 7px}.formgrid input,.formgrid select,.formgrid textarea{min-width:0;box-sizing:border-box;padding:11px 12px}.formgrid .jewellery-field select{font-weight:600}.form-actions{display:flex;gap:12px;margin-top:18px}.form-actions button{flex:1;min-height:48px;font-weight:800}
+.modalbg.show{display:flex}.modal{width:min(1040px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:16px;padding:18px}.modal h2{font-size:25px;margin:0 0 14px}.formgrid label{font-size:12px;font-weight:750;margin:2px 0 5px}.formgrid input,.formgrid select,.formgrid textarea{min-width:0;box-sizing:border-box;padding:9px 10px}.formgrid .jewellery-field select{font-weight:600}.form-actions{display:flex;gap:12px;margin-top:18px}.form-actions button{flex:1;min-height:48px;font-weight:800}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:12px 18px;border-radius:24px;display:none;z-index:100}
 .preview{max-width:100%;max-height:220px;border-radius:12px;border:1px solid #ddd}
 .small{font-size:12px}.danger-note{background:#fff3cd;border-radius:10px;padding:10px;color:#856404}
@@ -142,7 +142,7 @@ nav#nav button{width:100%;min-width:0;max-width:100%;padding:10px 8px;font-size:
 @media(max-width:950px){.expo-production-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.expo-production-grid{grid-template-columns:1fr}.production-filter select{max-width:none;flex:1;width:100%}}
 
-@media(max-width:900px){.formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.formgrid .jewellery-field{grid-column:span 2}}@media(max-width:560px){.formgrid{grid-template-columns:minmax(0,1fr);gap:10px}.formgrid .jewellery-field,.full{grid-column:1}.modal{padding:16px}.form-actions{flex-direction:column}.form-actions button{width:100%}}
+@media(max-width:1000px){.formgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.formgrid .jewellery-field{grid-column:span 2}}@media(max-width:560px){.formgrid{grid-template-columns:minmax(0,1fr);gap:9px}.formgrid .jewellery-field,.full{grid-column:1}.modal{padding:13px;width:100%;max-height:94vh}.modal h2{font-size:23px}.form-actions{flex-direction:column}.form-actions button{width:100%}}
 </style>
 </head>
 <body>
