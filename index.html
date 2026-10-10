@@ -309,7 +309,7 @@ function nav(){
  $('nav').innerHTML=a.map(x=>'<button class="'+(current===x[0]?'active':'')+'" onclick="go(\''+x[0]+'\')">'+x[1]+'</button>').join('');
 }
 function go(id){current=id;document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');renderAll()}
-function modal(title,body){$('modal').innerHTML='<h2>'+esc(title)+'</h2>'+body+'<div class="actions"><button class="light" onclick="closeModal()">Close</button></div>';$('modalbg').classList.add('show')}
+function modal(title,body){const footer=(title==='New Order'||title==='Edit Order')?'':'<div class="actions"><button class="light" onclick="closeModal()">Close</button></div>';$('modal').innerHTML='<h2>'+esc(title)+'</h2>'+body+footer;$('modalbg').classList.add('show')}
 function closeModal(){$('modalbg').classList.remove('show')}
 function totals(){
  let z={weight:0};STATUS.forEach(s=>z[s.toLowerCase()]=0);
